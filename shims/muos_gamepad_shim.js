@@ -54,6 +54,14 @@
   // que pelo menos 1 tick do C2 veja a transicao 0->1->0 completa.
   var LATCH_READS = 2;
   var latch = new Array(NBTN); for (var _l=0;_l<NBTN;_l++) latch[_l]=0;
+  var pendingTraceSeq = 0;
+  var lastReadTraceSeq = 0;
+
+  function buttonMask(p) {
+    var mask = 0;
+    for (var i = 0; i < NBTN; i++) if (p.buttons[i].pressed) mask |= (1 << i);
+    return "0x" + ("00000" + mask.toString(16)).slice(-5);
+  }
 
   // getGamepads(): aplica o latch — se o botao fisico soltou mas ainda ha latch, mantem pressed.
   function getGamepads() {
@@ -71,6 +79,12 @@
           p.buttons[i].value = 0;
         }
       }
+      if (pendingTraceSeq && pendingTraceSeq !== lastReadTraceSeq) {
+        lastReadTraceSeq = pendingTraceSeq;
+        if (window.console && console.log) {
+          console.log("MUOS_PAD_READ seq=" + pendingTraceSeq + " mask=" + buttonMask(p));
+        }
+      }
     }
     return pads;
   }
@@ -78,7 +92,7 @@
   navigator.webkitGetGamepads = getGamepads;
 
   // API nativa chamada pelo launcher C: btnState[17] 0..1, axState[4] -1..1.
-  window.__muos_pushGamepad = function (btnState, axState) {
+  window.__muos_pushGamepad = function (btnState, axState, traceSeq) {
     var p = pads[0];
     if (!p) { p = pads[0] = makePad(0); }
     var i;
@@ -100,6 +114,10 @@
       p.axes[i] = (axState && i < axState.length) ? +axState[i] : 0;
     }
     p.timestamp = (window.performance && performance.now) ? performance.now() : Date.now();
+    pendingTraceSeq = +traceSeq || 0;
+    if (window.console && console.log) {
+      console.log("MUOS_PAD_PUSH seq=" + pendingTraceSeq + " mask=" + buttonMask(p));
+    }
   };
 
   // Disparar gamepadconnected IMEDIATAMENTE (o C2 escuta este evento p/ ativar o pad).

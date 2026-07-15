@@ -43,7 +43,7 @@ $CC $OPT_CFLAGS \
   -I"$R/usr/include/libsoup-3.0" \
   -I audio-mixer \
   $GLIB_CFLAGS \
-  backend/moonrider-launch.c backend/evdev_gamepad.c backend/evdev_wait.c audio-mixer/muos_audio_mixer.o \
+  backend/moonrider-launch.c backend/evdev_gamepad.c backend/evdev_wait.c backend/input_watch.c audio-mixer/muos_audio_mixer.o \
   -o backend/moonrider-launch \
   -L"$R/usr/lib/aarch64-linux-gnu" \
   -L/work/audio-mixer/devlibs \

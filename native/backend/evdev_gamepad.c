@@ -28,8 +28,11 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
 #include <linux/input.h>
 #include "evdev_wait.h"
+#include "input_watch.h"
 
 /* ---- Indices W3C Standard ---- */
 enum {
@@ -51,6 +54,14 @@ typedef struct {
 
 static muos_pad_state g_pad = { {0}, {0}, 0, PTHREAD_MUTEX_INITIALIZER };
 static atomic_bool g_run = ATOMIC_VAR_INIT(false);
+static atomic_ullong g_event_seq = ATOMIC_VAR_INIT(0);
+static muos_input_watch g_input_watch;
+
+static int64_t monotonic_us(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
+}
 
 /* ---- Traducao de codigo evdev de botao -> indice standard ----
  * MAPA CORRIGIDO 2026-07-13 por captura evtest no RG40xx H (event1, muOS-Keys).
@@ -186,6 +197,12 @@ static void *evdev_thread(void *arg) {
   struct input_event ev;
   while (atomic_load_explicit(&g_run, memory_order_acquire)) {
     int ready = muos_evdev_wait(fds, (size_t)nfd, 100);
+    if (muos_input_watch_check(&g_input_watch, monotonic_us(), 250000) ==
+        MUOS_INPUT_WATCH_STALL) {
+      fprintf(stderr, "[input-watch] STALL gap_ms>=250 event_seq=%llu\n",
+              (unsigned long long)atomic_load_explicit(
+                  &g_event_seq, memory_order_acquire));
+    }
     if (ready < 0) {
       fprintf(stderr, "[evdev] poll falhou: %s\n", strerror(errno));
       break;
@@ -201,6 +218,11 @@ static void *evdev_thread(void *arg) {
           if (idx >= 0) {
             g_pad.btn[idx] = ev.value ? 1.0f : 0.0f;
             g_pad.dirty = 1;
+            unsigned long long seq = (unsigned long long)
+                atomic_fetch_add_explicit(&g_event_seq, 1, memory_order_acq_rel) + 1;
+            fprintf(stderr,
+                    "[evdev-trace] seq=%llu us=%lld type=KEY code=%d idx=%d value=%d\n",
+                    seq, (long long)monotonic_us(), ev.code, idx, ev.value);
           }
           /* Volume (114/115) e tratado pelo sistema muOS; ignorar em silencio. */
           else if (ev.value && ev.code != KEY_VOLUMEUP && ev.code != KEY_VOLUMEDOWN)
@@ -210,7 +232,14 @@ static void *evdev_thread(void *arg) {
           if (ev.code < ABS_CACHE && abs_known[i][ev.code]) {
             mn = abs_min[i][ev.code]; mx = abs_max[i][ev.code];
           }
-          if (apply_abs(&g_pad, ev.code, ev.value, mn, mx)) g_pad.dirty = 1;
+          if (apply_abs(&g_pad, ev.code, ev.value, mn, mx)) {
+            g_pad.dirty = 1;
+            unsigned long long seq = (unsigned long long)
+                atomic_fetch_add_explicit(&g_event_seq, 1, memory_order_acq_rel) + 1;
+            fprintf(stderr,
+                    "[evdev-trace] seq=%llu us=%lld type=ABS code=%d value=%d\n",
+                    seq, (long long)monotonic_us(), ev.code, ev.value);
+          }
         }
         pthread_mutex_unlock(&g_pad.lock);
       }
@@ -227,6 +256,8 @@ static int g_started = 0;
 
 void muos_gamepad_start(void) {
   if (g_started) return;
+  muos_input_watch_init(&g_input_watch, monotonic_us());
+  atomic_store_explicit(&g_event_seq, 0, memory_order_release);
   atomic_store_explicit(&g_run, true, memory_order_release);
   int err = pthread_create(&g_thr, NULL, evdev_thread, NULL);
   if (err != 0) {
@@ -252,4 +283,17 @@ int muos_gamepad_snapshot(float out_btn[NBTN], float out_ax[NAXES]) {
   memcpy(out_ax,  g_pad.ax,  sizeof(float) * NAXES);
   pthread_mutex_unlock(&g_pad.lock);
   return was_dirty;
+}
+
+void muos_gamepad_note_pulse(int64_t now_us) {
+  if (muos_input_watch_note_pulse(&g_input_watch, now_us) ==
+      MUOS_INPUT_WATCH_RECOVER) {
+    fprintf(stderr, "[input-watch] RECOVER event_seq=%llu\n",
+            (unsigned long long)atomic_load_explicit(
+                &g_event_seq, memory_order_acquire));
+  }
+}
+
+uint64_t muos_gamepad_event_seq(void) {
+  return (uint64_t)atomic_load_explicit(&g_event_seq, memory_order_acquire);
 }

@@ -96,10 +96,41 @@ static void on_exit_message(WebKitUserContentManager *ucm,
     if (g_loop) g_main_loop_quit(g_loop);
 }
 
+/* Diagnóstico de fronteira UIProcess -> WebProcess para cada mudança de input. */
+typedef struct {
+    uint64_t seq;
+    gint64 queued_us;
+} pad_js_trace;
+
+static void gamepad_js_done(GObject *src, GAsyncResult *res, gpointer data) {
+    pad_js_trace *trace = (pad_js_trace *)data;
+    GError *err = NULL;
+    WebKitJavascriptResult *result = webkit_web_view_run_javascript_finish(
+        WEBKIT_WEB_VIEW(src), res, &err);
+    gint64 latency_us = g_get_monotonic_time() - trace->queued_us;
+    fprintf(stderr, "[pad-js] ACK seq=%llu latency_us=%lld status=%s%s%s\n",
+            (unsigned long long)trace->seq, (long long)latency_us,
+            result ? "ok" : "error",
+            err ? " message=" : "", err ? err->message : "");
+    if (result) webkit_javascript_result_unref(result);
+    if (err) g_error_free(err);
+    g_free(trace);
+}
+
 /* Empurra o estado do gamepad (thread evdev) para o WebView via shim JS.
  * Chamado no GMainLoop (~60 Hz). So injeta quando ha mudanca. */
 static gboolean gamepad_pulse(gpointer data) {
     WebKitWebView *view = WEBKIT_WEB_VIEW(data);
+    static gint64 last_pulse_us = 0;
+    gint64 now_us = g_get_monotonic_time();
+    if (last_pulse_us && now_us - last_pulse_us >= 100000) {
+        fprintf(stderr, "[pad-pulse] GAP gap_us=%lld event_seq=%llu\n",
+                (long long)(now_us - last_pulse_us),
+                (unsigned long long)muos_gamepad_event_seq());
+    }
+    last_pulse_us = now_us;
+    muos_gamepad_note_pulse(now_us);
+
     float btn[MUOS_NBTN], ax[MUOS_NAXES];
     int dirty = muos_gamepad_snapshot(btn, ax);
     {
@@ -118,15 +149,26 @@ static gboolean gamepad_pulse(gpointer data) {
         }
     }
     if (dirty) {
-        char js[512];
+        char js[560];
+        uint64_t seq = muos_gamepad_event_seq();
+        unsigned int mask = 0;
+        for (int i = 0; i < MUOS_NBTN; i++) {
+            if (btn[i] >= 0.5f) mask |= 1U << i;
+        }
+        fprintf(stderr, "[pad-pulse] PUSH seq=%llu mask=0x%05x\n",
+                (unsigned long long)seq, mask);
         snprintf(js, sizeof(js),
             "if(window.__muos_pushGamepad)__muos_pushGamepad("
             "[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f],"
-            "[%.3f,%.3f,%.3f,%.3f]);",
+            "[%.3f,%.3f,%.3f,%.3f],%llu);",
             btn[0],btn[1],btn[2],btn[3],btn[4],btn[5],btn[6],btn[7],btn[8],
             btn[9],btn[10],btn[11],btn[12],btn[13],btn[14],btn[15],btn[16],
-            ax[0],ax[1],ax[2],ax[3]);
-        webkit_web_view_run_javascript(view, js, NULL, NULL, NULL);
+            ax[0],ax[1],ax[2],ax[3], (unsigned long long)seq);
+        pad_js_trace *trace = g_new(pad_js_trace, 1);
+        trace->seq = seq;
+        trace->queued_us = g_get_monotonic_time();
+        webkit_web_view_run_javascript(
+            view, js, NULL, gamepad_js_done, trace);
     }
     return G_SOURCE_CONTINUE;
 }

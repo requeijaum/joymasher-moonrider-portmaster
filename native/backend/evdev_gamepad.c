@@ -29,6 +29,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <linux/input.h>
+#include "evdev_wait.h"
 
 /* ---- Indices W3C Standard ---- */
 enum {
@@ -154,7 +155,7 @@ static void prime_abs_range(int fd, int slot) {
 
 static void *evdev_thread(void *arg) {
   (void)arg;
-  int fds[MAX_FDS]; int nfd = 0;
+  struct pollfd fds[MAX_FDS]; int nfd = 0;
   DIR *d = opendir("/dev/input");
   if (d) {
     struct dirent *de;
@@ -169,7 +170,10 @@ static void *evdev_thread(void *arg) {
       if (ioctl(fd, EVIOCGBIT(0, sizeof(evbit)), &evbit) >= 0 &&
           (evbit & ((1UL<<EV_KEY) | (1UL<<EV_ABS)))) {
         prime_abs_range(fd, nfd);
-        fds[nfd++] = fd;
+        fds[nfd].fd = fd;
+        fds[nfd].events = POLLIN;
+        fds[nfd].revents = 0;
+        nfd++;
         fprintf(stderr, "[evdev] usando %s\n", path);
       } else {
         close(fd);
@@ -181,9 +185,16 @@ static void *evdev_thread(void *arg) {
 
   struct input_event ev;
   while (atomic_load_explicit(&g_run, memory_order_acquire)) {
+    int ready = muos_evdev_wait(fds, (size_t)nfd, 100);
+    if (ready < 0) {
+      fprintf(stderr, "[evdev] poll falhou: %s\n", strerror(errno));
+      break;
+    }
+    if (ready == 0) continue;
     for (int i = 0; i < nfd; i++) {
+      if (!(fds[i].revents & POLLIN)) continue;
       ssize_t n;
-      while ((n = read(fds[i], &ev, sizeof(ev))) == (ssize_t)sizeof(ev)) {
+      while ((n = read(fds[i].fd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev)) {
         pthread_mutex_lock(&g_pad.lock);
         if (ev.type == EV_KEY) {
           int idx = map_key(ev.code);
@@ -205,9 +216,8 @@ static void *evdev_thread(void *arg) {
       }
     }
 
-    usleep(1000); /* ~1000 Hz poll — baixa latencia de input (era 4000=250Hz) */
   }
-  for (int i = 0; i < nfd; i++) close(fds[i]);
+  for (int i = 0; i < nfd; i++) close(fds[i].fd);
   return NULL;
 }
 

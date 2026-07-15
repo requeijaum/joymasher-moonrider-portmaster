@@ -23,24 +23,27 @@ fi
 
 GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include"
 GLIB_LIBS="-lglib-2.0 -lgobject-2.0 -lgio-2.0"
+BUILD_PROFILE=${MOONRIDER_BUILD_PROFILE:-baseline}
+OPT_CFLAGS=$("$SRC/scripts/build-flags.sh" "$BUILD_PROFILE")
+echo "=== build profile: $BUILD_PROFILE ($OPT_CFLAGS) ==="
 
 echo "=== [1/3] mixer de audio: muos_audio_mixer.o (miniaudio + libvorbis) ==="
 # miniaudio abre libasound via dlopen em runtime (-ldl). libvorbisfile/vorbis/ogg linkadas.
 # headers vorbis copiados do host em audio-mixer/vorbis-headers; libs do device em audio-mixer/devlibs.
-$CC -O2 -c \
+$CC $OPT_CFLAGS -c \
   -I audio-mixer -I audio-mixer/vorbis-headers \
   audio-mixer/muos_audio_mixer.c \
   -o audio-mixer/muos_audio_mixer.o
 echo "mixer.o OK: $(file audio-mixer/muos_audio_mixer.o | cut -d, -f1-2)"
 
 echo "=== [2/3] launcher: moonrider-launch (com evdev_gamepad + mixer) ==="
-$CC -O2 \
+$CC $OPT_CFLAGS \
   -I"$R/usr/include/wpe-webkit-1.1" \
   -I"$R/usr/include/wpe-1.0" \
   -I"$R/usr/include/libsoup-3.0" \
   -I audio-mixer \
   $GLIB_CFLAGS \
-  backend/moonrider-launch.c backend/evdev_gamepad.c audio-mixer/muos_audio_mixer.o \
+  backend/moonrider-launch.c backend/evdev_gamepad.c backend/evdev_wait.c audio-mixer/muos_audio_mixer.o \
   -o backend/moonrider-launch \
   -L"$R/usr/lib/aarch64-linux-gnu" \
   -L/work/audio-mixer/devlibs \
@@ -54,7 +57,7 @@ echo "launcher OK: $(file backend/moonrider-launch | cut -d, -f1-2)"
 
 echo "=== [3/3] backend: libWPEBackend-mali-fbdev.so ===" 
 EGL_INC="-I/work/sysroot/include"
-$CC -O2 -fPIC -shared \
+$CC $OPT_CFLAGS -fPIC -shared \
   -I"$R/usr/include/wpe-1.0" $EGL_INC \
   $GLIB_CFLAGS \
   backend/backend-mali-fbdev.c backend/loader-impl.c \
@@ -64,7 +67,7 @@ $CC -O2 -fPIC -shared \
   -Wl,-rpath-link,"$R/usr/lib/aarch64-linux-gnu" \
   -lwpe-1.0 $GLIB_LIBS || {
     echo "!! falhou com loader-impl.c — tentando so backend-mali-fbdev.c"
-    $CC -O2 -fPIC -shared \
+    $CC $OPT_CFLAGS -fPIC -shared \
       -I"$R/usr/include/wpe-1.0" $EGL_INC $GLIB_CFLAGS \
       backend/backend-mali-fbdev.c \
       -o backend/libWPEBackend-mali-fbdev.so \
@@ -75,7 +78,7 @@ $CC -O2 -fPIC -shared \
   }
 echo "backend OK: $(file backend/libWPEBackend-mali-fbdev.so | cut -d, -f1-2)"
 echo "=== [4/4] libGL.so.1 stub: força libepoxy a escolher EGL ==="
-$CC -O2 -fPIC -shared -Wl,-soname,libGL.so.1 \
+$CC $OPT_CFLAGS -fPIC -shared -Wl,-soname,libGL.so.1 \
   "$SRC/runtime-fixes/libgl-stub.c" -o backend/libGL.so.1
 echo "libGL stub OK: $(file backend/libGL.so.1 | cut -d, -f1-2)"
 echo "=== BUILD COMPLETO ==="

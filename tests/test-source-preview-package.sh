@@ -10,16 +10,29 @@ else
 fi
 
 VERSION="${VERSION:-v0.1.0-alpha.1}"
-OUT_DIR="$TMP" SOURCE_REF="${SOURCE_REF:-HEAD}" VERSION="$VERSION" \
+REF="${SOURCE_REF:-HEAD}"
+UTC_OUT="$TMP/utc"
+OTHER_OUT="$TMP/other-tz"
+EXTRACT="$TMP/extracted"
+mkdir -p "$UTC_OUT" "$OTHER_OUT" "$EXTRACT"
+
+TZ=UTC OUT_DIR="$UTC_OUT" SOURCE_REF="$REF" VERSION="$VERSION" \
+  bash "$ROOT/scripts/make-source-preview.sh" >/dev/null
+TZ=Pacific/Honolulu OUT_DIR="$OTHER_OUT" SOURCE_REF="$REF" VERSION="$VERSION" \
   bash "$ROOT/scripts/make-source-preview.sh" >/dev/null
 
-ZIP="$TMP/Moonrider-PortMaster-${VERSION#v}-source.zip"
-SUMS="$TMP/SHA256SUMS"
-FILES="$TMP/Moonrider-PortMaster-${VERSION#v}-source-files.sha256"
+NAME="Moonrider-PortMaster-${VERSION#v}-source"
+ZIP="$UTC_OUT/$NAME.zip"
+SUMS="$UTC_OUT/SHA256SUMS"
+FILES="$UTC_OUT/$NAME-files.sha256"
 
 [[ -s "$ZIP" && -s "$SUMS" && -s "$FILES" ]]
-(cd "$TMP" && sha256sum -c SHA256SUMS >/dev/null)
+(cd "$UTC_OUT" && sha256sum -c SHA256SUMS >/dev/null)
+cmp -s "$ZIP" "$OTHER_OUT/$NAME.zip"
+cmp -s "$FILES" "$OTHER_OUT/$NAME-files.sha256"
 unzip -tq "$ZIP" >/dev/null
+unzip -q "$ZIP" -d "$EXTRACT"
+(cd "$EXTRACT" && sha256sum -c "$FILES" >/dev/null)
 LIST="$TMP/list.txt"
 unzip -Z1 "$ZIP" > "$LIST"
 

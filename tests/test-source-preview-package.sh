@@ -9,7 +9,7 @@ else
   trap 'rm -rf "$TMP"' EXIT
 fi
 
-VERSION="${VERSION:-v0.1.0-alpha.1}"
+VERSION="${VERSION:-v0.1.0-alpha.2}"
 REF="${SOURCE_REF:-HEAD}"
 UTC_OUT="$TMP/utc"
 OTHER_OUT="$TMP/other-tz"

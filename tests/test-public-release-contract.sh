@@ -25,6 +25,7 @@ require_file tests/test-source-preview-package.sh
 require_file tests/test-runtime-release-audit.sh
 require_file reports/RUNTIME-REDISTRIBUTION-AUDIT-20260715.md
 require_file docs/releases/v0.1.0-alpha.1.md
+require_file docs/releases/v0.1.0-alpha.2.md
 
  grep -q 'Apache License' LICENSE
  grep -q 'Version 2.0' LICENSE

@@ -73,7 +73,7 @@ Release artifacts are explicitly labeled as either **source/BYO preview** or
 ready-to-play download. A runtime package may be published only after its complete
 third-party license manifest passes the release gate.
 
-[Download v0.1.0-alpha.1](https://github.com/requeijaum/joymasher-moonrider-portmaster/releases/tag/v0.1.0-alpha.1).
+[Download v0.1.0-alpha.2](https://github.com/requeijaum/joymasher-moonrider-portmaster/releases/tag/v0.1.0-alpha.2).
 
 After combining an approved runtime package with your own legitimate desktop game
 assets, drop `Moonrider.zip` into PortMaster (or its `autoinstall/` folder), or
@@ -143,7 +143,7 @@ gitignored; only port code and runtime glue are committed.
    tick while preserving the game's explicit one-shot behavior.
 3. **Performance/input investigation — open:** approximately 23 fps with drops to
    7–13 fps; delayed WebProcess input can create phantom button combinations.
-4. **Public alpha — source/BYO:** `v0.1.0-alpha.1` publishes reproducible
+4. **Public alpha — source/BYO:** `v0.1.0-alpha.2` publishes reproducible
    source artifacts and CI; binary runtime distribution remains gated on a
    complete license, provenance and codec audit.
 5. **Wider targets** *(future)* — other devices and firmware remain unverified.

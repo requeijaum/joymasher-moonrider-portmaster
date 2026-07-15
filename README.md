@@ -1,7 +1,15 @@
 # Vengeful Guardian: Moonrider — PortMaster
 
-A PortMaster port of **Vengeful Guardian: Moonrider** for aarch64 handhelds
-(RG40xxH / muOS and other PortMaster-supported devices).
+A PortMaster port of **Vengeful Guardian: Moonrider** for aarch64 handhelds.
+
+> ## ⚠️ Tested target
+> This port has **only been tested on the Anbernic RG40xx H running muOS 2508.4
+> "LOOSE GOOSE"** (H700 SoC, Mali-G31, kernel 4.9.170, aarch64).
+>
+> It is **not** confirmed working on any other device, muOS version, or PortMaster
+> distro (ArkOS, AmberELEC, Knulli, ROCKNIX, etc.). It may work elsewhere given a
+> compatible `mali-fbdev` path, but that is unverified — treat other targets as
+> experimental and expect breakage.
 
 The game is a Construct 2 / HTML5 title. Rather than an Android WebView (see the
 `moonrider-android` sibling project), this port serves the untouched web build

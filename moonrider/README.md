@@ -3,6 +3,9 @@
 A PortMaster port of Vengeful Guardian: Moonrider (Construct 2 / HTML5) running
 on a bundled aarch64 WPE WebKit runtime.
 
+> ⚠️ Tested ONLY on Anbernic RG40xx H / muOS 2508.4 "LOOSE GOOSE".
+> Other devices and muOS versions are unverified.
+
 ## Controls
 
 | Button      | Action             |

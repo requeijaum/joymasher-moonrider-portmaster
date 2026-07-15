@@ -9,7 +9,7 @@
     "attr": {
         "title": "Vengeful Guardian: Moonrider",
         "porter": ["requeijaum"],
-        "desc": "Construct 2 / HTML5 build of Vengeful Guardian: Moonrider running on a bundled aarch64 WPE WebKit runtime rendered to the framebuffer.",
+        "desc": "Construct 2 / HTML5 build of Vengeful Guardian: Moonrider running on a bundled aarch64 WPE WebKit runtime rendered to the framebuffer. Tested only on Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
         "inst": "Provide your own legitimate game assets (Steam AppID 1942010 / GOG) via scripts/extract-assets.sh. No assets are bundled.",
         "genres": ["action", "platformer"],
         "image": {

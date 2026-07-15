@@ -2,8 +2,11 @@
     "zip_file": "Moonrider.zip",
     "files": [
         "Moonrider.sh",
-        "moonrider/",
-        ["README.md", "moonrider/README.md"],
-        ["build", "moonrider"]
+        "moonrider/"
+    ],
+    "exclude": [
+        "moonrider/game/*",
+        "moonrider/log.txt",
+        "moonrider/.xdg/*"
     ]
 }

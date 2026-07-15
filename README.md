@@ -6,8 +6,9 @@
 
 PortMaster port of **Vengeful Guardian: Moonrider** — the Construct 2 / HTML5
 build of the game served through a bundled **WPE WebKit** runtime and rendered
-straight to the framebuffer via the `mali-fbdev` backend. Physical gamepads are
-mapped through gptokeyb; a quit combo returns you to the Ports menu.
+straight to the framebuffer via the `mali-fbdev` backend. The gamepad is read
+directly from evdev inside the launcher (no gptokeyb); an **L2 + R1** combo quits
+back to the Ports menu.
 
 This repo contains **only the port code and runtime glue**. No game assets are
 included — bring your own copy of the game (see below).
@@ -62,17 +63,21 @@ scripts/deploy.sh root@192.168.1.115 /roms/ports
 ## The port
 
 Rather than an Android WebView (see the sibling `moonrider-android` project),
-this port ships a native **WPE WebKit / cog** runtime cross-compiled x86_64 →
+this port ships a native **WPE WebKit** runtime cross-compiled x86_64 →
 aarch64 and renders through `mali-fbdev`:
 
-- `Moonrider.sh` — launcher: sources PortMaster `control.txt`, sets up the runtime
-  environment, starts gptokeyb, runs the game, cleans up on exit
-- `moonrider/moonrider.gptk` — gamepad → keycode mapping
-- `moonrider/runtime/` — the bundled aarch64 WPE/cog/GStreamer/ICU library set
-  (imported, not authored — see `docs/CROSS-COMPILE.md`)
+- `Moonrider.sh` — launcher: sources PortMaster `control.txt`, stops the muOS
+  frontend to release `/dev/fb0`, then runs the game via `runtime/run-moonrider.sh`
+- `moonrider/runtime/` — the bundled aarch64 WPE/GStreamer/ICU library set plus
+  our `moonrider-launch` binary and `libWPEBackend-mali-fbdev.so`
+  (built via `docker/` + imported — see `docs/CROSS-COMPILE.md`)
 
 Everything under `moonrider/game/` (`c2runtime.js`, `data.js`, sprites, audio) is
 the untouched original. Saves live in the WebKit local storage.
+
+The gamepad is read straight from evdev inside `moonrider-launch` (no gptokeyb).
+The mapping and the **L2 + R1** quit combo live in the launcher C source
+(`backend/evdev_gamepad.c`, `backend/exit_combo.h`).
 
 ### Controls
 
@@ -86,7 +91,7 @@ the untouched original. Saves live in the WebKit local storage.
 | **Start**   | Pause / Menu        |
 | **L2 + R1** | Quit to PortMaster  |
 
-The mapping lives in `moonrider/moonrider.gptk`; update this table when it changes.
+The mapping lives in the launcher C source; update this table when it changes.
 
 ## About the assets
 
@@ -103,8 +108,8 @@ gitignored; only port code and runtime glue are committed.
    container (`docs/CROSS-COMPILE.md`); the repo currently ships only a placeholder.
 2. **On-device bring-up** — first boot on the RG40xx H, read `log.txt`, tune the
    WPE/`mali-fbdev` env until the game presents.
-3. **Gamepad mapping** — refine `moonrider.gptk` against the game's real keycodes;
-   confirm the exit combo (L2+R1).
+3. **Gamepad mapping** — verify the evdev mapping in `moonrider-launch` against
+   the game's real keycodes; confirm the exit combo (L2+R1).
 4. **Performance** — measure FPS in real gameplay (moving scene, not a static one).
 5. **Wider targets** *(maybe)* — validate on other muOS versions / PortMaster
    distros once the RG40xx H path is solid.

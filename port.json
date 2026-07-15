@@ -1,24 +1,24 @@
 {
-    "version": 1,
-    "name": "moonrider.zip",
+    "version": 3,
+    "name": "moonrider",
     "items": [
         "Moonrider.sh",
-        "moonrider"
+        "moonrider/"
     ],
     "items_opt": [],
     "attr": {
         "title": "Vengeful Guardian: Moonrider",
         "porter": ["requeijaum"],
-        "desc": "Construct 2 / HTML5 build of Vengeful Guardian: Moonrider running on a bundled aarch64 WPE WebKit runtime rendered to the framebuffer. Tested only on Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
+        "desc": "Construct 2 / HTML5 build of Vengeful Guardian: Moonrider on a bundled aarch64 WPE WebKit runtime rendered straight to the framebuffer (mali-fbdev). Requires the user's own game assets. Tested only on Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
+        "desc_pt": "Port do Vengeful Guardian: Moonrider (build Construct 2 / HTML5) rodando em runtime WPE WebKit aarch64 nativo, desenhando direto no framebuffer (mali-fbdev). Requer os arquivos do jogo do usuário. Testado apenas no Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
         "inst": "Provide your own legitimate game assets (Steam AppID 1942010 / GOG) via scripts/extract-assets.sh. No assets are bundled.",
         "genres": ["action", "platformer"],
         "image": {
             "screenshot": "screenshot.png"
         },
         "rtr": false,
-        "exp": false,
-        "runtime": null,
-        "reqs": ["mali-fbdev"],
+        "runtime": "",
+        "reqs": ["gles"],
         "arch": ["aarch64"]
     }
 }

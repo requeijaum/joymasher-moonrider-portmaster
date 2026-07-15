@@ -3,6 +3,12 @@ moonrider/game/
 moonrider/log.txt
 moonrider/.xdg/
 
+# Runtime — large aarch64 WPE binaries, never committed.
+# The on-device install script assembles it (copies binaries) or verifies it
+# (binaries already inside the port zip). Keep the placeholder README tracked.
+moonrider/runtime/*
+!moonrider/runtime/README.md
+
 # Build artifacts
 *.zip
 Moonrider.zip

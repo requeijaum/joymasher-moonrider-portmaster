@@ -90,7 +90,39 @@ docker run --rm \
 - [x] Engine preserved on the Livinha pendrive (backup zip, integrity checked)
 - [x] Engine restored to `/tmp/wpe-spike/engine` (from backup, 591 MB, engine/root OK)
 - [x] Launcher backend cross-compiled against the restored engine — 2026-07-15
-- [ ] Runtime imported into `moonrider/runtime/` and tested on the RG40xx H
+- [x] Runtime assembled FRESH from engine + fresh binaries (`assemble-runtime-fresh.sh`)
+- [ ] Runtime tested on the RG40xx H (device boot)
+
+## Fresh runtime assembly (2026-07-15)
+
+`moonrider/runtime/` is **gitignored** (large aarch64 binaries). The on-device
+install step assembles it (copies binaries) or verifies it (binaries already in
+the port zip). It is rebuilt from true sources by
+`scripts/assemble-runtime-fresh.sh`, NOT copied wholesale:
+
+| Subtree | Source | Files |
+|---------|--------|-------|
+| `libs/` | engine/root flat `.so` + krb5/keyutils/spake | 150 |
+| `lib/` | WPE processes, cog modules, injected bundle (engine) + **our** mali-fbdev backend + glx-stub | 9 |
+| `gst-plugins/` | prepared audio set + core elements/tracers (engine) | 24 |
+| `bin/` | **our** fresh `moonrider-launch` + `cog` (engine) | 2 |
+| `run-moonrider.sh` | copied from known-good reference (config, not a binary) | — |
+
+`registry.bin` is intentionally omitted — `run-moonrider.sh` regenerates the
+GStreamer registry in tmpfs on the device.
+
+Validation: assembled in `/tmp/moonrider-runtime-fresh` (350 MB), all NEEDED libs
+of `moonrider-launch` + `WPEWebProcess` + the mali-fbdev backend resolve within
+the tree (0 unresolved, excluding system/device libs). The `moonrider-launch`
+inside the tree is byte-for-byte the freshly built one (707,744 B).
+
+### Backups on the Livinha pendrive (`Portsmaster/`)
+
+| Zip | Size | Contents |
+|-----|------|----------|
+| `wpe-spike-engine-backup-20260715.zip` | 244 MB | engine + backend + audio-mixer scratch |
+| `moonrider-runtime-known-good-20260715.zip` | 105 MB | reference runtime from the old template |
+| `moonrider-runtime-fresh-20260715.zip` | 134 MB | the freshly assembled runtime |
 
 ## Launcher build result (2026-07-15)
 

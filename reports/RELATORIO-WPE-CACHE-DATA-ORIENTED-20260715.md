@@ -229,13 +229,17 @@ The imported runtime was confirmed as Debian `wpewebkit 2.38.6-1`. Exact source 
 
 The source is about 311 MB extracted, but a WebKit build needs several GB of object storage. Available safe storage was only approximately 442 MB in tmpfs and 3.3 GB on the external backup volume. The root filesystem is deliberately excluded from large writes. A full build was therefore not started.
 
-Debian's exact `debian/rules` also contains:
+Debian's exact `debian/rules` still passes:
 
 ```text
 -DWTF_CPU_ARM64_CORTEXA53=OFF
 ```
 
-WebKit bug 197192 confirms that this option controls a JavaScriptCore workaround for Cortex-A53 erratum 835769; it is not a general cache optimization. It historically broke cross-builds and was intentionally disabled by Debian. Our GCC A53 native profile already enables compiler workarounds 835769 and 843419 for compiled C code, but that does not automatically retune JSC-generated machine code. Re-enabling the WebKit option without confirming the H700 core revision and running JSC tests would be unsafe.
+Historically this option controlled JavaScriptCore's workaround for Cortex-A53 erratum 835769; it was never a general cache optimization. WebKit bug 197192 records that the old implementation broke cross-builds and Debian disabled it to make those builds succeed.
+
+A case-insensitive full-tree search of the exact upstream WPE WebKit 2.38.6 source found no references to `WTF_CPU_ARM64_CORTEXA53`, Cortex-A53, or 835769. Therefore the Debian CMake assignment is residual/inert for this source release: setting it to ON would not enable a hidden JIT optimization or workaround because the corresponding code no longer exists in 2.38.6.
+
+The GCC A53 native profile can still apply compiler-side workarounds to ahead-of-time C/C++ code, but it cannot alter machine code emitted at runtime by JavaScriptCore. Determining whether the H700 needs any JIT-side mitigation would require its actual Cortex-A53 core revision and analysis of the JSC 2.38.6 instruction sequences; this stale CMake variable is not a mechanism for doing so.
 
 ### Current blockers
 

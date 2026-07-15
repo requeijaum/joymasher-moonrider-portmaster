@@ -7,8 +7,8 @@
 PortMaster port of **Vengeful Guardian: Moonrider** — the Construct 2 / HTML5
 build of the game served through a bundled **WPE WebKit** runtime and rendered
 straight to the framebuffer via the `mali-fbdev` backend. The gamepad is read
-directly from evdev inside the launcher (no gptokeyb); an **L2 + R1** combo quits
-back to the Ports menu.
+directly from evdev inside the launcher (no gptokeyb); an **L2 + R1 double-press**
+quits back to the Ports menu.
 
 This repo contains **only the port code and runtime glue**. No game assets are
 included — bring your own copy of the game (see below).
@@ -81,17 +81,21 @@ The mapping and the **L2 + R1** quit combo live in the launcher C source
 
 ### Controls
 
-| Button      | Action              |
-|-------------|---------------------|
-| **D-Pad**   | Move                |
-| **A**       | Jump                |
-| **B**       | Attack              |
-| **X / Y**   | Special / Weapon    |
-| **L1 / R1** | Cycle weapon        |
-| **Start**   | Pause / Menu        |
-| **L2 + R1** | Quit to PortMaster  |
+The launcher forwards the physical gamepad to the game via the HTML5 Gamepad
+API; the in-game action of each button is defined by Moonrider itself and is
+**not yet confirmed on-device** for this port. The one mapping we *do* own is the
+system quit combo, implemented in the launcher:
 
-The mapping lives in the launcher C source; update this table when it changes.
+| Input                        | Action                          |
+|------------------------------|---------------------------------|
+| D-Pad / left stick           | In-game movement (game-defined) |
+| Face / shoulder buttons      | In-game actions (game-defined)  |
+| **L2 + R1, pressed twice within 2 s** | Quit to PortMaster    |
+
+> The quit combo is a **double press** (press, release, press again inside 2 s) —
+> holding it once does not trigger. It lives in `backend/exit_combo.h` +
+> `backend/moonrider-launch.c` (`btn[6]`=L2, `btn[5]`=R1). Fill in the game's real
+> button→action rows here once verified on the device.
 
 ## About the assets
 

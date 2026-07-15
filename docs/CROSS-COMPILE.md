@@ -50,17 +50,29 @@ The WPE-WebKit headers/libs are **not** from apt — they are bind-mounted from 
 prepared engine root (host `/tmp/wpe-spike/engine` → container `/work/engine`):
 
 ```sh
-docker run --rm \
-  -v "$PWD":/work \
-  -v /tmp/wpe-spike/engine:/work/engine \
+# /tmp/wpe-spike holds the restored engine, device devlibs and build outputs.
+# This repository is mounted read-only as the canonical source tree.
+docker run --rm --platform linux/arm64 \
+  -v /tmp/wpe-spike:/work \
+  -v "$PWD":/source:ro \
   -w /work \
-  wpebuild:cpp bash scripts/build-launcher-backend.sh
+  wpebuild:cpp bash /source/scripts/build-launcher-backend.sh
 ```
 
-`build-launcher-backend.sh` compiles, in order:
-1. `audio-mixer/muos_audio_mixer.o` — miniaudio + libvorbis (ALSA via `dlopen`)
-2. `backend/moonrider-launch` — WPE launcher + evdev gamepad + mixer
-3. `backend/libWPEBackend-mali-fbdev.so` — the fbdev/Mali present backend
+`build-launcher-backend.sh` stages sources from `native/` into the scratch and
+compiles, in order:
+1. `muos_audio_mixer.o` — miniaudio + libvorbis, including PLAYPAIR scheduling
+2. `moonrider-launch` — WPE launcher + evdev gamepad + matched PLAYPAIR handler
+3. `libWPEBackend-mali-fbdev.so` — fbdev/Mali present backend
+4. `libGL.so.1` — no-op GLX stub that forces libepoxy onto EGL
+
+Then assemble the runtime and run the regression gate:
+```sh
+scripts/assemble-runtime-fresh.sh /tmp/wpe-spike moonrider/runtime
+scripts/verify-playable-contract.sh   # source/config contract
+# After BYO assets are extracted:
+scripts/verify-playable-contract.sh moonrider
+```
 
 Outputs land in `backend/`; copy them into the runtime's `bin/` and `lib/`.
 
@@ -74,9 +86,10 @@ The heavy aarch64 runtime is assembled separately and imported wholesale:
 - `scripts/import-device-devlibs.sh` — pull a handful of device-native `.so`
   (libasound/libogg/libvorbis…) off the RG40xx H over SSH for linking the mixer.
 
-> This repo ships `moonrider/runtime/` as a placeholder. Populate it via the
-> import step above. The sibling `moonrider-portmaster-template/runtime/` holds a
-> known-good reference set for the RG40xx H / muOS 2508.4 target.
+> This repo keeps the WPE runtime gitignored and reconstructs it with
+> `scripts/assemble-runtime-fresh.sh`. The portable source of truth is the
+> versioned config/custom code plus the backed-up engine root — no sibling repo
+> is required.
 
 ## Reference
 
@@ -85,4 +98,4 @@ Anbernic RG40xx H / muOS 2508.4 "LOOSE GOOSE" (H700, Mali-G31, kernel 4.9.170).
 
 See [`REBUILD-PROVENANCE.md`](REBUILD-PROVENANCE.md) for the actual from-scratch
 rebuild log (2026-07-15), verified toolchain versions, and how to restore the
-engine tree from the Livinha pendrive backup before compiling.
+engine tree from the external backup drive pendrive backup before compiling.

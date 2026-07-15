@@ -9,12 +9,14 @@ export LIBGL_FB=2
 export LIBGL_ES=2
 export WEBKIT_GST_DISABLE_GL_SINK=1
 
-# GStreamer plugins bundled with the port. WebKit/GStreamer 1.x on this muOS build
-# may honor either the generic or the _1_0-suffixed variables, so set both.
-export GST_PLUGIN_PATH="$HERE/gst-plugins:$HERE/libs"
-export GST_PLUGIN_SYSTEM_PATH="$HERE/gst-plugins:$HERE/libs"
-export GST_PLUGIN_PATH_1_0="$HERE/gst-plugins:$HERE/libs"
-export GST_PLUGIN_SYSTEM_PATH_1_0="$HERE/gst-plugins:$HERE/libs"
+# GStreamer plugins bundled with the port. IMPORTANT: libs/ contains shared
+# dependencies (including libgstgl), not plugins. Scanning it makes GStreamer
+# dlopen libgstgl as a plugin and enters the broken GLX/gl4es path. Keep all
+# four variables restricted to the real plugin directory.
+export GST_PLUGIN_PATH="$HERE/gst-plugins"
+export GST_PLUGIN_SYSTEM_PATH="$HERE/gst-plugins"
+export GST_PLUGIN_PATH_1_0="$HERE/gst-plugins"
+export GST_PLUGIN_SYSTEM_PATH_1_0="$HERE/gst-plugins"
 # Use tmpfs for registry to avoid SD/eMMC wear and space issues
 export GST_REGISTRY="/run/moonrider/gst-registry.bin"
 export GST_REGISTRY_UPDATE=yes

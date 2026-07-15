@@ -35,12 +35,36 @@ if [ -e "$LOCKFILE" ]; then
   fi
 fi
 echo $$ > "$LOCKFILE"
-trap "rm -f $LOCKFILE" EXIT
+
+SAFE_QUIT=/run/muos_safe_quit
+FRONTEND_FROZEN=""
+CLEANED=0
+cleanup() {
+  [ "$CLEANED" -eq 1 ] && return
+  CLEANED=1
+  rm -f "$LOCKFILE" "$SAFE_QUIT"
+  if [ -n "$FRONTEND_FROZEN" ]; then
+    FPID=$(pgrep -x muxfrontend 2>/dev/null || true)
+    [ -n "$FPID" ] && kill -CONT "$FPID" 2>/dev/null || true
+  else
+    FRONTEND start 2>/dev/null || true
+  fi
+}
+on_signal() { exit 130; }
+trap cleanup EXIT
+trap on_signal INT TERM
 
 # --- Stop the muOS frontend to release /dev/fb0 --------------------------------
-# NOTE: muOS-specific. On other CFWs this block needs a different teardown.
+# FRONTEND stop only exits muxfrontend when SAFE_QUIT is exported and its flag
+# exists. SSH/PortMaster wrappers do not reliably inherit that variable.
 . /opt/muos/script/var/func.sh
+export SAFE_QUIT
+: > "$SAFE_QUIT"
 FRONTEND stop
+sleep 1
+if pgrep -x muxfrontend >/dev/null 2>&1; then
+  kill -STOP "$(pgrep -x muxfrontend)" 2>/dev/null && FRONTEND_FROZEN=1
+fi
 
 # --- Logging to tmpfs (avoid SD/eMMC wear) -------------------------------------
 mkdir -p /run/moonrider
@@ -58,6 +82,5 @@ export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 # --- Run: the WPE runtime launcher points at the game's index.html -------------
 ./runtime/run-moonrider.sh "file://$GAMEDIR/game/index.html"
 
-# --- Restart the frontend after exit -------------------------------------------
-FRONTEND start
+# --- Frontend restoration is handled by cleanup() ------------------------------
 cp "$LOGFILE" "$GAMEDIR/log.txt" 2>/dev/null || true

@@ -4,9 +4,22 @@
 # Reproduz o comando de build documentado na skill electron-construct-arm64-port.
 set -e
 R=/work/engine/root
+SRC=${MOONRIDER_SOURCE_ROOT:-/source}
 CC=aarch64-linux-gnu-gcc
 CXX=aarch64-linux-gnu-g++
 cd /work
+
+# Canonical custom sources live in moonrider-pm, not only in ephemeral /tmp.
+# Mount the repository at /source. Stage sources into /work because the scratch
+# also carries device devlibs and receives generated outputs.
+if [ -d "$SRC/native/backend" ] && [ -d "$SRC/native/audio-mixer" ]; then
+  mkdir -p /work/backend /work/audio-mixer
+  cp -a "$SRC/native/backend/." /work/backend/
+  cp -a "$SRC/native/audio-mixer/." /work/audio-mixer/
+else
+  echo "ERRO: fontes canônicas ausentes em $SRC/native (monte moonrider-pm em /source)" >&2
+  exit 2
+fi
 
 GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include"
 GLIB_LIBS="-lglib-2.0 -lgobject-2.0 -lgio-2.0"
@@ -61,5 +74,10 @@ $CC -O2 -fPIC -shared \
       -lwpe-1.0 $GLIB_LIBS
   }
 echo "backend OK: $(file backend/libWPEBackend-mali-fbdev.so | cut -d, -f1-2)"
+echo "=== [4/4] libGL.so.1 stub: força libepoxy a escolher EGL ==="
+$CC -O2 -fPIC -shared -Wl,-soname,libGL.so.1 \
+  "$SRC/runtime-fixes/libgl-stub.c" -o backend/libGL.so.1
+echo "libGL stub OK: $(file backend/libGL.so.1 | cut -d, -f1-2)"
 echo "=== BUILD COMPLETO ==="
-ls -la backend/moonrider-launch backend/libWPEBackend-mali-fbdev.so
+grep -qa PLAYPAIR backend/moonrider-launch || { echo "ERRO: launcher sem PLAYPAIR" >&2; exit 3; }
+ls -la backend/moonrider-launch backend/libWPEBackend-mali-fbdev.so backend/libGL.so.1

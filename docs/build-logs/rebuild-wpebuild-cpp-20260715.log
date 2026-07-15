@@ -1,6 +1,6 @@
 # Rebuild wpebuild:cpp — 2026-07-15T00:47:51-03:00
 # host: 6.19.5-x64v3-xanmod1 x86_64 GNU/Linux
-# reference backup: Livinha/Portsmaster/wpe-spike-engine-backup-20260715.zip
+# reference backup: external backup drive/Portsmaster/wpe-spike-engine-backup-20260715.zip
 # command: docker buildx build --platform linux/arm64 -t wpebuild:cpp -f docker/Dockerfile .
 -----
 #0 building with "default" instance using docker driver
@@ -43,7 +43,28 @@
 #5 [2/4] RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends       gcc g++       make cmake meson ninja-build pkg-config       libglib2.0-dev       libvorbis-dev libogg-dev       libasound2-dev       ca-certificates       git unzip rsync file curl     && rm -rf /var/lib/apt/lists/*
 #5 84.65 debconf: delaying package configuration, since apt-utils is not installed
 #5 85.12 Selecting previously unselected package perl-modules-5.36.
-#5 85.12 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6090 files and directories currently installed.)
+#5 85.12 (Reading database ...
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 6090 files and directories currently installed.)
 #5 85.15 Preparing to unpack .../0-perl-modules-5.36_5.36.0-7+deb12u3_all.deb ...
 #5 85.17 Unpacking perl-modules-5.36 (5.36.0-7+deb12u3) ...
 #5 86.59 Selecting previously unselected package libgdbm6:arm64.
@@ -75,7 +96,28 @@
 #5 94.27 Setting up libexpat1:arm64 (2.5.0-1+deb12u2) ...
 #5 94.49 Setting up python3.11-minimal (3.11.2-6+deb12u8) ...
 #5 101.4 Selecting previously unselected package python3-minimal.
-#5 101.4 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8429 files and directories currently installed.)
+#5 101.4 (Reading database ...
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 8429 files and directories currently installed.)
 #5 101.4 Preparing to unpack .../00-python3-minimal_3.11.2-1+b1_arm64.deb ...
 #5 101.4 Unpacking python3-minimal (3.11.2-1+b1) ...
 #5 101.7 Selecting previously unselected package media-types.
@@ -128,7 +170,28 @@
 #5 107.5 Unpacking libpython3-stdlib:arm64 (3.11.2-1+b1) ...
 #5 107.7 Setting up python3-minimal (3.11.2-1+b1) ...
 #5 110.2 Selecting previously unselected package python3.
-#5 110.2 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8937 files and directories currently installed.)
+#5 110.2 (Reading database ...
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 8937 files and directories currently installed.)
 #5 110.2 Preparing to unpack .../000-python3_3.11.2-1+b1_arm64.deb ...
 #5 110.3 Unpacking python3 (3.11.2-1+b1) ...
 #5 110.6 Selecting previously unselected package libpopt0:arm64.

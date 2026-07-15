@@ -46,7 +46,7 @@ The heavy WPE-WebKit aarch64 runtime is **bind-mounted**, never baked into the
 image. It was archived on 2026-07-15 before the environment was wiped:
 
 ```
-/media/rafaelfrequiao/Livinha/Portsmaster/wpe-spike-engine-backup-20260715.zip
+/path/to/external-backup/Portsmaster/wpe-spike-engine-backup-20260715.zip
   244 MB · 1617 files · 616,419,922 bytes uncompressed · unzip -t OK
 ```
 
@@ -65,7 +65,7 @@ Key contents (what the launcher build links against):
 ```sh
 # 1. Restore the engine scratch tree from the backup
 mkdir -p /tmp
-unzip -q "/media/rafaelfrequiao/Livinha/Portsmaster/wpe-spike-engine-backup-20260715.zip" \
+unzip -q "/path/to/external-backup/Portsmaster/wpe-spike-engine-backup-20260715.zip" \
   -d /tmp                       # -> /tmp/wpe-spike/engine, /backend, /audio-mixer
 
 # 2. (Re)build the image if needed
@@ -87,7 +87,7 @@ docker run --rm \
 ## Status
 
 - [x] `wpebuild:cpp` rebuilt from `docker/Dockerfile`, verified aarch64 + toolchain
-- [x] Engine preserved on the Livinha pendrive (backup zip, integrity checked)
+- [x] Engine preserved on the external backup drive pendrive (backup zip, integrity checked)
 - [x] Engine restored to `/tmp/wpe-spike/engine` (from backup, 591 MB, engine/root OK)
 - [x] Launcher backend cross-compiled against the restored engine — 2026-07-15
 - [x] Runtime assembled FRESH from engine + fresh binaries (`assemble-runtime-fresh.sh`)
@@ -116,7 +116,7 @@ of `moonrider-launch` + `WPEWebProcess` + the mali-fbdev backend resolve within
 the tree (0 unresolved, excluding system/device libs). The `moonrider-launch`
 inside the tree is byte-for-byte the freshly built one (707,744 B).
 
-### Backups on the Livinha pendrive (`Portsmaster/`)
+### Backups on the external backup drive pendrive (`Portsmaster/`)
 
 | Zip | Size | Contents |
 |-----|------|----------|

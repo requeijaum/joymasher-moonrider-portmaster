@@ -51,7 +51,7 @@ Ações: vendorados `docker/Dockerfile` + `docker/original-chain/` reais; `scrip
 
 ### 3. Rebuild do ambiente Docker do zero (com backup)
 
-- **Backup do insubstituível primeiro:** `/tmp/wpe-spike` (engine WPE aarch64, não reproduzível pelo Dockerfile, some no reboot) zipado para o pendrive **Livinha** antes de qualquer exclusão.
+- **Backup do insubstituível primeiro:** `/tmp/wpe-spike` (engine WPE aarch64, não reproduzível pelo Dockerfile, some no reboot) zipado para o pendrive **external backup drive** antes de qualquer exclusão.
 - Apagadas as 3 imagens `wpebuild` (cpp/epoxy/arm64) + `/tmp/wpe-spike` — recomeço 100% limpo (autorizado).
 - **Rebuild** de `wpebuild:cpp` a partir de `docker/Dockerfile`: imagem `ffe2c1bfc409`, arm64/debian bookworm, ~286s (emulado), verificada dentro (gcc/g++ 12.2, glib 2.74.6, vorbis 1.3.7, ogg 1.3.5, alsa 1.2.8).
 
@@ -99,7 +99,7 @@ Descoberto que `moonrider/runtime/` **não** estava sendo ignorado (só `game/`)
 
 ---
 
-## Backups no pendrive Livinha (`Portsmaster/`)
+## Backups no pendrive external backup drive (`Portsmaster/`)
 
 | Zip | Tamanho | Conteúdo |
 |---|---|---|

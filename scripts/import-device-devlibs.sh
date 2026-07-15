@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOST="${HOST:-192.168.1.115}"
+HOST="${HOST:-192.168.1.116}"
 # Device root password MUST be supplied via the SSHPASS env var; no default.
 if [[ -z "${SSHPASS:-}" ]]; then
   echo "Set SSHPASS to the device root password, e.g. SSHPASS=... $0" >&2

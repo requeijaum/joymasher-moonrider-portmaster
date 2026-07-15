@@ -32,6 +32,8 @@ ENGINE="$SCRATCH/engine/root/usr/lib/aarch64-linux-gnu"
 GSTAUDIO="$SCRATCH/gst-plugins-audio"
 BACKEND="$SCRATCH/backend"
 REF_RUN="$ROOT/runtime-config/run-moonrider.sh"
+LIBGL_STUB_BUILT="$BACKEND/libGL.so.1"
+LIBGL_STUB_TRACKED="$ROOT/runtime-fixes/libGL.so.1"
 
 echo "== assemble-runtime-fresh =="
 echo "  scratch: $SCRATCH"
@@ -56,6 +58,18 @@ for extra in \
     "$ENGINE/krb5/plugins/preauth/spake.so"; do
   [[ -e "$extra" ]] && cp -a "$extra"* "$DEST/libs/" 2>/dev/null || true
 done
+
+# CRITICAL: libepoxy has NEEDED libGL.so.1. The device's gl4es libGL lacks
+# glXGetCurrentContext and aborts WebProcess GL initialization before frame 1.
+# A no-op GLX stub in libs/ shadows gl4es and makes epoxy select EGL instead.
+if [[ -f "$LIBGL_STUB_BUILT" ]]; then
+  cp -a "$LIBGL_STUB_BUILT" "$DEST/libs/libGL.so.1"
+elif [[ -f "$LIBGL_STUB_TRACKED" ]]; then
+  cp -a "$LIBGL_STUB_TRACKED" "$DEST/libs/libGL.so.1"
+else
+  echo "!! CRITICAL: libGL.so.1 stub missing (build output and tracked fallback absent)" >&2
+  exit 1
+fi
 
 # --- lib/ : WPE processes + cog modules + injected bundle + backends ----------
 echo "-- lib/ (WPE processes, cog modules, backends) --"
@@ -105,3 +119,16 @@ echo "  libs:        $(find "$DEST/libs" -type f | wc -l) files"
 echo "  gst-plugins: $(find "$DEST/gst-plugins" -type f | wc -l) files"
 echo "  run script:  $([[ -f "$DEST/run-moonrider.sh" ]] && echo yes || echo NO)"
 echo "  total size:  $(du -sh "$DEST" | cut -f1)"
+
+# Playable-state contract. Fail assembly instead of producing a subtly broken
+# runtime that only reveals itself after deployment.
+[[ -f "$DEST/libs/libGL.so.1" ]] || { echo "!! contract: libGL stub absent" >&2; exit 1; }
+grep -qa 'PLAYPAIR' "$DEST/bin/moonrider-launch" || {
+  echo "!! contract: launcher has no PLAYPAIR handler (wrong audio generation)" >&2
+  exit 1
+}
+if grep -q 'gst-plugins:.*libs' "$DEST/run-moonrider.sh"; then
+  echo "!! contract: run script still scans libs/ as GStreamer plugins" >&2
+  exit 1
+fi
+echo "  contract:    BASE-RUNTIME-V1 OK (PLAYABLE-V2 completed by game-layer verifier)"

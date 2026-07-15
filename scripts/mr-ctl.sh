@@ -25,14 +25,25 @@ GAMEDIR=/mnt/sdcard/ports/moonrider
 LOG=/mnt/mmc/moonrider-diag.log
 LOCK=/run/moonrider.lock
 
+# BusyBox pgrep may not match executable paths reliably. Inspect argv[0] and
+# compare its basename exactly; this never matches the controller's own shell.
+proc_pids() {
+  WANT="$1"
+  for DPID in /proc/[0-9]*; do
+    [ -r "$DPID/cmdline" ] || continue
+    ARG0=$(tr '\000' '\n' < "$DPID/cmdline" 2>/dev/null | sed -n '1p')
+    [ "${ARG0##*/}" = "$WANT" ] && echo "${DPID##*/}"
+  done
+}
+
 mr_env() {
   cd "$D" || exit 1
   export LD_LIBRARY_PATH="$D/libs:$D/lib:/usr/lib/gl4es:/usr/lib:/lib"
   export LIBGL_FB=2 LIBGL_ES=2 WEBKIT_GST_DISABLE_GL_SINK=1
-  export GST_PLUGIN_PATH="$D/gst-plugins:$D/libs"
-  export GST_PLUGIN_SYSTEM_PATH="$D/gst-plugins:$D/libs"
-  export GST_PLUGIN_PATH_1_0="$D/gst-plugins:$D/libs"
-  export GST_PLUGIN_SYSTEM_PATH_1_0="$D/gst-plugins:$D/libs"
+  export GST_PLUGIN_PATH="$D/gst-plugins"
+  export GST_PLUGIN_SYSTEM_PATH="$D/gst-plugins"
+  export GST_PLUGIN_PATH_1_0="$D/gst-plugins"
+  export GST_PLUGIN_SYSTEM_PATH_1_0="$D/gst-plugins"
   export GST_REGISTRY=/run/moonrider/gst-registry.bin
   export GST_REGISTRY_UPDATE=yes GST_REGISTRY_FORK=no
   export XDG_RUNTIME_DIR=/run PIPEWIRE_RUNTIME_DIR=/run
@@ -56,16 +67,19 @@ frontend_stop() { . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND stop 2>
 frontend_start() { . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start 2>/dev/null; }
 
 mr_kill() {
-  for p in moonrider-launch WPEWebProcess WPENetworkProcess run-moonrider Moonrider.sh; do
-    pkill -TERM -f "$p" 2>/dev/null && echo "  TERM -> $p"
-  done
-  sleep 2
+  # Match executable names only. Never broad-match command lines or the SSH/controller.
+  PIDS=""
   for p in moonrider-launch WPEWebProcess WPENetworkProcess; do
-    if pgrep -f "$p" >/dev/null 2>&1; then pkill -TERM -f "$p" 2>/dev/null; echo "  re-TERM -> $p"; fi
+    for pid in $(proc_pids "$p"); do
+      case " $PIDS " in *" $pid "*) ;; *) PIDS="$PIDS $pid";; esac
+    done
   done
-  sleep 1
+  if [ -n "$PIDS" ]; then
+    for pid in $PIDS; do kill -TERM "$pid" 2>/dev/null && echo "  TERM -> $pid"; done
+    sleep 2
+  fi
   rm -f "$LOCK"
-  pgrep -f moonrider-launch >/dev/null 2>&1 && echo "  WARN: launch still alive" || echo "  launch dead"
+  [ -n "$(proc_pids moonrider-launch)" ] && echo "  WARN: launch still alive" || echo "  launch dead"
 }
 
 case "${1:-}" in
@@ -79,15 +93,35 @@ case "${1:-}" in
     RUNNER=/mnt/mmc/mr-run-inner.sh
     cat > "$RUNNER" <<INNER
 #!/bin/sh
+# --- robust frontend teardown ---------------------------------------------
+# muOS FRONTEND stop sends SIGUSR1 and only makes muxfrontend actually EXIT
+# when \$SAFE_QUIT is set (it writes that flag-file so the frontend's own
+# signal handler knows the quit is intentional). Launched over SSH we don't
+# inherit the muOS env, so we must provide SAFE_QUIT ourselves.
+export SAFE_QUIT=/run/muos_safe_quit
+: > "\$SAFE_QUIT" 2>/dev/null || true
 . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND stop 2>/dev/null
+# Fallback: if muxfrontend survived (SAFE_QUIT path failed), FREEZE it so it
+# releases the framebuffer without being killed/restarted (SIGCONT at the end).
+FRONTEND_FROZEN=""
+if pidof muxfrontend >/dev/null 2>&1; then
+  kill -STOP "\$(pidof muxfrontend)" 2>/dev/null && FRONTEND_FROZEN=1
+fi
 sleep 1
 cd "$D"
 export LD_LIBRARY_PATH="$D/libs:$D/lib:/usr/lib/gl4es:/usr/lib:/lib"
+# CRITICO (fix 20260715): $D/libs contem uma libGL.so.1 STUB propria que precede
+# /usr/lib/gl4es no path. O libepoxy tem NEEDED libGL.so.1; se resolver o gl4es real
+# (que NAO exporta glXGetCurrentContext) o WebProcess ABORTA a init GL antes do 1o
+# frame ("glXGetCurrentContext() not found"). Com a stub (todos glX -> NULL) o epoxy
+# cai no path EGL e o jogo renderiza. Fonte: runtime-fixes/libgl-stub.c
 export LIBGL_FB=2 LIBGL_ES=2 WEBKIT_GST_DISABLE_GL_SINK=1
-export GST_PLUGIN_PATH="$D/gst-plugins:$D/libs"
-export GST_PLUGIN_SYSTEM_PATH="$D/gst-plugins:$D/libs"
-export GST_PLUGIN_PATH_1_0="$D/gst-plugins:$D/libs"
-export GST_PLUGIN_SYSTEM_PATH_1_0="$D/gst-plugins:$D/libs"
+# GST_PLUGIN_PATH so gst-plugins (NAO incluir libs: evita o scanner tentar carregar
+# libgstgl-1.0.so como plugin, que falha em glXMakeCurrent).
+export GST_PLUGIN_PATH="$D/gst-plugins"
+export GST_PLUGIN_SYSTEM_PATH="$D/gst-plugins"
+export GST_PLUGIN_PATH_1_0="$D/gst-plugins"
+export GST_PLUGIN_SYSTEM_PATH_1_0="$D/gst-plugins"
 export GST_REGISTRY=/run/moonrider/gst-registry.bin
 export GST_REGISTRY_UPDATE=yes GST_REGISTRY_FORK=no
 export XDG_RUNTIME_DIR=/run PIPEWIRE_RUNTIME_DIR=/run
@@ -104,7 +138,13 @@ mkdir -p /run/moonrider "\$XDG_CACHE_HOME"
 rm -f "\$GST_REGISTRY" 2>/dev/null || true
 timeout ${SECS} "$D/bin/moonrider-launch" "file://$GAMEDIR/game/index.html" >> "$LOG" 2>&1
 echo "[mr-ctl] exit=\$?" >> "$LOG"
-. /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start 2>/dev/null
+# Restore frontend: thaw if we froze it, else normal start.
+if [ -n "\$FRONTEND_FROZEN" ] && pidof muxfrontend >/dev/null 2>&1; then
+  kill -CONT "\$(pidof muxfrontend)" 2>/dev/null
+else
+  . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start 2>/dev/null
+fi
+rm -f "\$SAFE_QUIT" 2>/dev/null || true
 INNER
     chmod +x "$RUNNER"
     # nohup + setsid + stdio fully redirected + background = immune to SSH SIGHUP.
@@ -119,9 +159,15 @@ INNER
     ;;
   status)
     echo "== mr-ctl status =="
-    pgrep -af moonrider-launch || echo "  moonrider-launch: not running"
-    pgrep -af WPEWebProcess || echo "  WPEWebProcess: not running"
-    pgrep -af muxfrontend >/dev/null && echo "  frontend: running" || echo "  frontend: NOT running"
+    for p in moonrider-launch WPEWebProcess WPENetworkProcess; do
+      PIDS=$(proc_pids "$p")
+      if [ -n "$PIDS" ]; then
+        for pid in $PIDS; do echo "  $p: running pid=$pid"; done
+      else
+        echo "  $p: not running"
+      fi
+    done
+    pidof muxfrontend >/dev/null 2>&1 && echo "  frontend: running" || echo "  frontend: NOT running"
     h1=$(md5sum /dev/fb0 2>/dev/null | cut -d' ' -f1)
     sleep 3
     h2=$(md5sum /dev/fb0 2>/dev/null | cut -d' ' -f1)

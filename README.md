@@ -26,26 +26,34 @@ included — bring your own copy of the game (see below).
 - The bundled aarch64 WPE runtime under `moonrider/runtime/` (imported
   separately — see [`docs/CROSS-COMPILE.md`](docs/CROSS-COMPILE.md))
 
-## Build
+## Reproduce a playable build
+
+The clean path has three explicit stages and a regression gate:
 
 ```bash
-scripts/extract-assets.sh /path/to/game/assets   # populate moonrider/game/
-scripts/make-portmaster-zip.sh                   # -> Moonrider.zip
+# 1. Cross-build custom aarch64 code from the versioned native/ sources.
+docker run --rm --platform linux/arm64 \
+  -v /tmp/wpe-spike:/work -v "$PWD":/source:ro -w /work \
+  wpebuild:cpp bash /source/scripts/build-launcher-backend.sh
+
+# 2. Assemble WPE runtime and apply the versioned muOS layer to BYO assets.
+scripts/assemble-runtime-fresh.sh /tmp/wpe-spike moonrider/runtime
+scripts/extract-assets.sh /path/to/game/assets
+
+# 3. Refuse known regressions, then package.
+scripts/verify-playable-contract.sh moonrider
+scripts/make-portmaster-zip.sh
 ```
 
-`extract-assets.sh` copies your game assets into `moonrider/game/`; the packager
-then assembles the HarbourMaster zip described by `build_zip.json`. To stage off a
-full SSD, both scripts honor env overrides (symlink mode + `/tmp` output):
+The playable contract requires all of these together:
+- `runtime/libs/libGL.so.1`: no-op GLX stub that makes libepoxy select EGL;
+- a matched PLAYPAIR trio: native launcher + mixer + `muos_audio_ghost.js`;
+- GStreamer plugin paths restricted to `runtime/gst-plugins` (never `libs`);
+- `SAFE_QUIT` frontend teardown before taking `/dev/fb0`.
 
-```bash
-MOONRIDER_LINK=1 MOONRIDER_GAME_DEST=/tmp/stage/game \
-  scripts/extract-assets.sh /path/to/game/assets
-MOONRIDER_OUT=/tmp/Moonrider.zip MOONRIDER_INCLUDE_GAME=1 \
-  scripts/make-portmaster-zip.sh
-```
-
-The "game assets folder" is the one holding `c2runtime.js`, `data.js`, `media/`,
-`images/`, the `.csv` files and `asteristic_logo.mp4`.
+`extract-assets.sh` copies legitimate game assets into `moonrider/game/` and
+then deterministically injects the versioned gamepad/audio shims before
+`c2runtime.js`. Original assets remain untracked and are never redistributed.
 
 > The intro video `asteristic_logo.mp4` is **mandatory** — without it the engine
 > waits forever before the menu (it's also what unlocks WebView audio).
@@ -57,7 +65,7 @@ manually into `/roms/ports`. Then launch **Moonrider** from the Ports menu.
 
 ```bash
 # on-device, over SSH
-scripts/deploy.sh root@192.168.1.115 /roms/ports
+scripts/deploy.sh 192.168.1.116
 ```
 
 ## The port
@@ -72,12 +80,13 @@ aarch64 and renders through `mali-fbdev`:
   our `moonrider-launch` binary and `libWPEBackend-mali-fbdev.so`
   (built via `docker/` + imported — see `docs/CROSS-COMPILE.md`)
 
-Everything under `moonrider/game/` (`c2runtime.js`, `data.js`, sprites, audio) is
-the untouched original. Saves live in the WebKit local storage.
+The original game assets remain bring-your-own and untracked. The build adds only
+the versioned compatibility layer (`muos_gamepad_shim.js`, PLAYPAIR audio ghost,
+and generated script tags in `index.html`). Saves live in WebKit local storage.
 
 The gamepad is read straight from evdev inside `moonrider-launch` (no gptokeyb).
-The mapping and the **L2 + R1** quit combo live in the launcher C source
-(`backend/evdev_gamepad.c`, `backend/exit_combo.h`).
+The mapping and the **L2 + R1** quit combo live in the canonical sources under
+`native/backend/`.
 
 ### Controls
 
@@ -106,17 +115,23 @@ those assets through WPE WebKit works. Ten languages, released 12 Jan 2023.
 No assets are redistributed here. `moonrider/game/` is bring-your-own and
 gitignored; only port code and runtime glue are committed.
 
-## Roadmap
+## Release status
 
-1. **Import the runtime** — populate `moonrider/runtime/` from the cross-compile
-   container (`docs/CROSS-COMPILE.md`); the repo currently ships only a placeholder.
-2. **On-device bring-up** — first boot on the RG40xx H, read `log.txt`, tune the
-   WPE/`mali-fbdev` env until the game presents.
-3. **Gamepad mapping** — verify the evdev mapping in `moonrider-launch` against
-   the game's real keycodes; confirm the exit combo (L2+R1).
-4. **Performance** — measure FPS in real gameplay (moving scene, not a static one).
-5. **Wider targets** *(maybe)* — validate on other muOS versions / PortMaster
-   distros once the RG40xx H path is solid.
+1. **PLAYABLE-V2 baseline — complete:** reproducible WPE/EGL runtime, libGL stub,
+   matched PLAYPAIR trio, native gamepad, and safe frontend lifecycle.
+2. **Continuous-SFX fix — complete:** C2 `Audio:Is tag playing` now mirrors native
+   voice state. This prevents `mrrun` and `bikemotor_loop` from retriggering every
+   tick while preserving the game's explicit one-shot behavior.
+3. **Release hardening — complete for RG40xx H/muOS:** clean build, real-device
+   smoke test, BYO-only ZIP, checksum, rollback backup, and frontend restoration.
+4. **Wider targets** *(future)* — other devices and firmware remain unverified.
+
+### Required game export
+
+Use the desktop/Electron Construct 2 export. The raw Android-derived export is
+not compatible with this release and may display its mobile overlay. PLAYABLE-V2
+pins the tested core hashes in `manifests/PLAYABLE-V2.json`; the verifier rejects
+the known-wrong export before deployment.
 
 ## Legal
 

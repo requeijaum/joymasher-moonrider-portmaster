@@ -19,10 +19,10 @@
 # Env:
 #   SSHPASS   device root password (required; muOS default is 'root')
 #   STAGING   staging dir containing Moonrider.sh + moonrider/ (default /tmp/moonrider-staging)
-#   HOST      device IP (default 192.168.1.115)
+#   HOST      device IP (default 192.168.1.116)
 set -euo pipefail
 
-HOST="${1:-${HOST:-192.168.1.115}}"
+HOST="${1:-${HOST:-192.168.1.116}}"
 STAGING="${STAGING:-/tmp/moonrider-staging}"
 PORTS_LAUNCHER="/mnt/union/ROMS/Ports/Moonrider.sh"
 PORTS_PAYLOAD="/mnt/union/ports/moonrider"
@@ -39,10 +39,9 @@ fi
 export SSHPASS
 RSH="sshpass -e ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=15"
 
-# -L dereferences the game symlink; --no-owner/--no-group avoid unionfs chown
-# failures (fuse rejects chown, harmless); --no-perms lets the device keep its
-# 0777 defaults. Incremental: safe to re-run after an interrupted transfer.
-RSYNC_OPTS="-rlLtD --no-owner --no-group --no-perms --info=progress2"
+# Preserve executable bits and timestamps; avoid chown across unionfs/FAT.
+# Staging must be a real tree (release builds do not rely on game symlinks).
+RSYNC_OPTS="-rlptD --no-o --no-g --info=progress2"
 
 echo "Deploying payload -> $HOST:$PORTS_PAYLOAD/"
 rsync $RSYNC_OPTS -e "$RSH" "$STAGING/moonrider/" "root@$HOST:$PORTS_PAYLOAD/"

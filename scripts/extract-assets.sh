@@ -33,9 +33,10 @@ if [ "$LINK" = "1" ]; then
   mkdir -p "$(dirname "$DEST")"
   rm -rf "$DEST"
   ln -s "$SRC_ABS" "$DEST"
-  echo "Linked game assets (no copy):"
+  echo "Linked raw game assets (no copy):"
   echo "  $DEST -> $SRC_ABS"
-  echo "Done. (symlink mode — package with 'find -L')."
+  echo "WARNING: symlink mode does NOT modify original assets and therefore does"
+  echo "not apply the required muOS shims. Use copy/staging mode for a playable build."
   exit 0
 fi
 
@@ -60,4 +61,8 @@ cp -a "$SRC_ABS"/*.csv "$DEST/" 2>/dev/null && echo "  + *.csv" || true
 # Intro video (mandatory — engine waits on it before the menu / audio unlock)
 cp -a "$SRC_ABS"/*.mp4 "$DEST/" 2>/dev/null && echo "  + *.mp4" || true
 
-echo "Done. Verify with scripts/verify-assets.sh (TODO)."
+# Apply the versioned, deterministic muOS/WPE compatibility layer. This copies
+# the gamepad + PLAYPAIR audio shims and injects them before c2runtime.js.
+python3 "$ROOT/scripts/apply-port-layer.py" "$DEST"
+
+echo "Done. Playable-layer contract applied."

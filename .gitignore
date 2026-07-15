@@ -17,6 +17,7 @@ Moonrider.zip
 __pycache__/
 *.pyc
 *.o
+*.bak
 
 # Editor / OS
 .DS_Store

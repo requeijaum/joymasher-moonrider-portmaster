@@ -48,7 +48,7 @@ jobs:
         working-directory: dist
         run: sha256sum -c SHA256SUMS
       - name: Publish GitHub prerelease
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ steps.version.outputs.value }}
           prerelease: true

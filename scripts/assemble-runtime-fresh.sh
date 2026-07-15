@@ -8,7 +8,8 @@
 #
 #   libs/        <- engine/root .so set (WPEWebKit, GStreamer, ICU, cairo, ...)
 #   lib/         <- WPE processes, cog modules, injected bundle (engine) +
-#                   glx-stub.so + OUR libWPEBackend-mali-fbdev.so
+#                   glx-stub.so + OUR libWPEBackend-mali-fbdev.so, aliased to
+#                   libWPEBackend-default.so (the name libwpe actually loads)
 #   gst-plugins/ <- prepared audio plugin set
 #   bin/         <- OUR moonrider-launch (fresh) + cog (engine)
 #   run-moonrider.sh <- launcher config (copied from the known-good reference)
@@ -68,6 +69,10 @@ cp -a "$ENGINE/libWPEBackend-default.so"               "$DEST/lib/" 2>/dev/null 
 cp -a "$BACKEND/glx-stub.so"                           "$DEST/lib/" 2>/dev/null || true
 # OUR freshly cross-compiled mali-fbdev backend
 cp -a "$BACKEND/libWPEBackend-mali-fbdev.so"           "$DEST/lib/"
+# CRITICAL: libwpe 1.x loads the backend by the fixed name libWPEBackend-default.so
+# and IGNORES $WPE_BACKEND / $WPE_BACKEND_LIBRARY. Without this alias the view gets
+# a null backend and the screen stays black. Alias default.so -> our mali-fbdev.
+cp -a "$DEST/lib/libWPEBackend-mali-fbdev.so"          "$DEST/lib/libWPEBackend-default.so"
 
 # --- gst-plugins/ : prepared audio plugin set + core plugins from engine ------
 echo "-- gst-plugins/ (audio set + core) --"

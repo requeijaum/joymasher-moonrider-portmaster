@@ -33,6 +33,13 @@ mkdir -p "$XDG_CACHE_HOME"
 export WPE_BACKEND="$HERE/lib/libWPEBackend-mali-fbdev.so"
 export WPE_BACKEND_LIBRARY="$HERE/lib/libWPEBackend-mali-fbdev.so"
 
+# WebKit spawns WPEWebProcess/WPENetworkProcess as separate executables. libWPEWebKit
+# has the build-time libexecdir (/usr/lib/aarch64-linux-gnu/wpe-webkit-1.1) hardcoded,
+# so without WEBKIT_EXEC_PATH it looks OUTSIDE the port and the web process never
+# spawns -> black screen. Point it at our bundled copy to stay self-contained.
+export WEBKIT_EXEC_PATH="$HERE/lib/wpe-webkit-1.1"
+export WEBKIT_INJECTED_BUNDLE_PATH="$HERE/lib/wpe-webkit-1.1/injected-bundle"
+
 # Diagnostics while stabilizing; set to 0/empty in final release if log overhead matters.
 export MUOS_DEBUG=1
 

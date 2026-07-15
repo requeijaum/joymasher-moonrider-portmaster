@@ -82,3 +82,7 @@ The heavy aarch64 runtime is assembled separately and imported wholesale:
 
 Build steps mirror the `electron-construct-arm64-port` skill. Tested target:
 Anbernic RG40xx H / muOS 2508.4 "LOOSE GOOSE" (H700, Mali-G31, kernel 4.9.170).
+
+See [`REBUILD-PROVENANCE.md`](REBUILD-PROVENANCE.md) for the actual from-scratch
+rebuild log (2026-07-15), verified toolchain versions, and how to restore the
+engine tree from the Livinha pendrive backup before compiling.

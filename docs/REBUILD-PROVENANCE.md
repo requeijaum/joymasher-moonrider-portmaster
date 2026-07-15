@@ -88,6 +88,22 @@ docker run --rm \
 
 - [x] `wpebuild:cpp` rebuilt from `docker/Dockerfile`, verified aarch64 + toolchain
 - [x] Engine preserved on the Livinha pendrive (backup zip, integrity checked)
-- [ ] Engine restored to `/tmp/wpe-spike/engine` (do at build time)
-- [ ] Launcher backend cross-compiled against the restored engine
+- [x] Engine restored to `/tmp/wpe-spike/engine` (from backup, 591 MB, engine/root OK)
+- [x] Launcher backend cross-compiled against the restored engine — 2026-07-15
 - [ ] Runtime imported into `moonrider/runtime/` and tested on the RG40xx H
+
+## Launcher build result (2026-07-15)
+
+Built inside `wpebuild:cpp` with `/tmp/wpe-spike` mounted as `/work`
+(log: `docs/build-logs/launcher-build-20260715.log`):
+
+| Artifact | Size | Type |
+|----------|------|------|
+| `backend/moonrider-launch` | 692 KB | ELF aarch64 PIE executable |
+| `backend/libWPEBackend-mali-fbdev.so` | 71 KB | ELF aarch64 shared object |
+| `audio-mixer/muos_audio_mixer.o` | 849 KB | ELF aarch64 relocatable |
+
+`moonrider-launch` NEEDED: `libWPEWebKit-1.1.so.0`, `libwpe-1.0.so.1`,
+`libglib-2.0.so.0`, `libgobject-2.0.so.0`, `libvorbisfile.so.3`, `libm`, `libc`
+— all satisfied by the imported runtime + device libs. Build reproducible from
+the backup + `docker/Dockerfile` with zero manual steps.

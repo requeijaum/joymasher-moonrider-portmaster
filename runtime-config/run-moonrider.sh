@@ -1,10 +1,11 @@
 #!/bin/sh
 # run-moonrider.sh — Moonrider WPE/fbdev runtime launcher for muOS
 HERE="$(cd "$(dirname "$0")" && pwd)"
+ENGINE="${MOONRIDER_WPE_ENGINE_DIR:-$HERE}"
 URL="${1:-file://$HERE/smoke.html}"
 
 # Local WPE/WebKit/runtime libraries first.
-export LD_LIBRARY_PATH="$HERE/libs:$HERE/lib:/usr/lib/gl4es:/usr/lib:/lib"
+export LD_LIBRARY_PATH="$ENGINE/libs:$HERE/libs:$HERE/lib:/usr/lib/gl4es:/usr/lib:/lib"
 export LIBGL_FB=2
 export LIBGL_ES=2
 export WEBKIT_GST_DISABLE_GL_SINK=1
@@ -39,8 +40,8 @@ export WPE_BACKEND_LIBRARY="$HERE/lib/libWPEBackend-mali-fbdev.so"
 # has the build-time libexecdir (/usr/lib/aarch64-linux-gnu/wpe-webkit-1.1) hardcoded,
 # so without WEBKIT_EXEC_PATH it looks OUTSIDE the port and the web process never
 # spawns -> black screen. Point it at our bundled copy to stay self-contained.
-export WEBKIT_EXEC_PATH="$HERE/lib/wpe-webkit-1.1"
-export WEBKIT_INJECTED_BUNDLE_PATH="$HERE/lib/wpe-webkit-1.1/injected-bundle"
+export WEBKIT_EXEC_PATH="$ENGINE/lib/wpe-webkit-1.1"
+export WEBKIT_INJECTED_BUNDLE_PATH="$ENGINE/lib/wpe-webkit-1.1/injected-bundle"
 
 # Diagnostics while stabilizing; set to 0/empty in final release if log overhead matters.
 export MUOS_DEBUG=1

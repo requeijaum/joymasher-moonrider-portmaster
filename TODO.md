@@ -67,8 +67,8 @@ via NEEDED (só o NEEDED versionado importa). O smoke test V2 não emitiu o warn
 Rafael jogar sessão longa: performance/FPS, todas as fases, cutscenes,
 pausar/retomar (áudio), sair pelo combo L2+R1, verificar se não há travas.
 
-### [x] TASK-7 (P3) — Atualizar docs/DEVICE.md com IP .116
-IP atual do device é 192.168.1.116 (pode mudar por DHCP após reboot).
+### [x] TASK-7 (P3) — Documentar endereço dinâmico do dispositivo
+O endereço é atribuído por DHCP e não deve ser versionado no repositório público.
 
 ### [x] TASK-8 (P3) — Restore de frontend sem reboot
 O controller usa SAFE_QUIT, fallback STOP/CONT por PID exato e `FRONTEND start`.

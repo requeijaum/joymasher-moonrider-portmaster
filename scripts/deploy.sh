@@ -14,21 +14,25 @@
 # runtime, extract-assets.sh for game) or point STAGING at an existing one.
 #
 # Usage:
-#   SSHPASS=<devpass> STAGING=/tmp/moonrider-staging scripts/deploy.sh [host]
+#   SSHPASS=<devpass> STAGING=/tmp/moonrider-staging scripts/deploy.sh <host>
 #
 # Env:
 #   SSHPASS   device root password (required; muOS default is 'root')
 #   STAGING   staging dir containing Moonrider.sh + moonrider/ (default /tmp/moonrider-staging)
-#   HOST      device IP (default 192.168.1.116)
+#   HOST      device hostname or IP (required unless passed as argument)
 set -euo pipefail
 
-HOST="${1:-${HOST:-192.168.1.116}}"
+HOST="${1:-${HOST:-}}"
 STAGING="${STAGING:-/tmp/moonrider-staging}"
 PORTS_LAUNCHER="/mnt/union/ROMS/Ports/Moonrider.sh"
 PORTS_PAYLOAD="/mnt/union/ports/moonrider"
 
 if [[ -z "${SSHPASS:-}" ]]; then
   echo "Set SSHPASS to the device root password (muOS default: root)." >&2
+  exit 2
+fi
+if [[ -z "$HOST" ]]; then
+  echo "Pass the device hostname/IP as argument or set HOST." >&2
   exit 2
 fi
 if [[ ! -d "$STAGING/moonrider" ]]; then

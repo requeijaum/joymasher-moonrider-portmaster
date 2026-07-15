@@ -136,7 +136,7 @@ b2702a0 build: cross-compile launcher backend from restored engine
 ## Pendências (requerem hardware)
 
 1. Empacotar o zip do port **com o runtime fresh** em `/tmp` (nunca no SSD).
-2. Deploy no RG40xx H (`192.168.1.115`).
+2. Deploy no RG40xx H (`<device-ip>`).
 3. Boot pelo menu Ports e validar: vídeo (WPE/fbdev/Mali), áudio (mixer + ALSA), intro `asteristic_logo.mp4`, e o combo de saída **L2 + R1 (2×)**.
 4. Confirmar o mapeamento in-game real dos botões (hoje documentado como não confirmado).
 

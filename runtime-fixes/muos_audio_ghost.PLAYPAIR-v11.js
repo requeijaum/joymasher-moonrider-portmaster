@@ -46,7 +46,7 @@
 
   // path absoluto do .ogg no filesystem (o mixer abre via fopen)
   // Deriva de document.location. ATENCAO: o launcher usa load_html com base URI =
-  // DIRETORIO com barra final (file:///.../moonrider-game/), NAO .../index.html.
+  // DIRETORIO com barra final (file:///.../game/), NAO .../index.html.
   // A regex antiga exigia terminar em /arquivo -> falhava com barra final -> caia no
   // fallback sdcard e o mixer procurava .ogg em /mnt/sdcard (inexistente, r=-7, mudo).
   // Agora trata os dois casos: com barra final e com arquivo.
@@ -61,7 +61,7 @@
         if (dir) return dir + "/media/";
       }
     } catch (e) {}
-    return "/mnt/mmc/ports/moonrider/moonrider-game/media/"; // fallback (port vive em mmc)
+    return "/mnt/union/ports/moonrider/game/media/"; // canonical PortMaster fallback
   })();
   function oggPath(name) { return MEDIA_BASE + ("" + name).toLowerCase() + ".ogg"; }
 

@@ -1,0 +1,61 @@
+name: Release source/BYO preview
+
+on:
+  push:
+    tags:
+      - 'v*-alpha*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing tag to package
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.version || github.ref }}
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='${{ inputs.version }}'
+          if [[ -z "$version" ]]; then version="$GITHUB_REF_NAME"; fi
+          [[ "$version" == v*-alpha* ]]
+          git rev-parse --verify "${version}^{commit}" >/dev/null
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Verify public source contract
+        run: sh scripts/verify-public-release.sh
+      - name: Build deterministic source/BYO artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir dist
+          VERSION='${{ steps.version.outputs.value }}' \
+          SOURCE_REF='${{ steps.version.outputs.value }}' \
+          OUT_DIR="$GITHUB_WORKSPACE/dist" \
+            bash scripts/make-source-preview.sh
+      - name: Verify checksums
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS
+      - name: Publish GitHub prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.value }}
+          prerelease: true
+          generate_release_notes: false
+          body_path: docs/releases/${{ steps.version.outputs.value }}.md
+          files: |
+            dist/Moonrider-PortMaster-*-source.zip
+            dist/Moonrider-PortMaster-*-source-files.sha256
+            dist/SHA256SUMS
+          fail_on_unmatched_files: true

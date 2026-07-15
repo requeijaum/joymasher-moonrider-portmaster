@@ -1,5 +1,13 @@
 # Moonrider — PortMaster
 
+[![CI](https://github.com/requeijaum/joymasher-moonrider-portmaster/actions/workflows/ci.yml/badge.svg)](https://github.com/requeijaum/joymasher-moonrider-portmaster/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/port%20code-Apache--2.0-blue.svg)](LICENSE)
+
+> **Development preview:** the port boots and is playable on the tested RG40xx H,
+> but it currently runs around 23 fps, can drop to 7–13 fps, and has a diagnosed
+> input-backlog problem during severe slowdowns. Read [Known issues](KNOWN_ISSUES.md)
+> before testing or sharing it.
+
 <p align="center">
   <em>All rights reserved to JoyMasher, The Arcade Crew and Asteristic Game Studio.</em>
 </p>
@@ -60,13 +68,24 @@ then deterministically injects the versioned gamepad/audio shims before
 
 ## Install
 
-Drop `Moonrider.zip` into PortMaster (or its `autoinstall/` folder), or unzip it
-manually into `/roms/ports`. Then launch **Moonrider** from the Ports menu.
+Release artifacts are explicitly labeled as either **source/BYO preview** or
+**runtime package**. A source/BYO preview contains no WPE binaries and is not a
+ready-to-play download. A runtime package may be published only after its complete
+third-party license manifest passes the release gate.
+
+[Download v0.1.0-alpha.1](https://github.com/requeijaum/joymasher-moonrider-portmaster/releases/tag/v0.1.0-alpha.1).
+
+After combining an approved runtime package with your own legitimate desktop game
+assets, drop `Moonrider.zip` into PortMaster (or its `autoinstall/` folder), or
+unzip it manually into `/roms/ports`. Then launch **Moonrider** from the Ports menu.
 
 ```bash
 # on-device, over SSH
-scripts/deploy.sh 192.168.1.116
+SSHPASS='<device-password>' scripts/deploy.sh <device-ip>
 ```
+
+See [Contributing](CONTRIBUTING.md) for the asset-free build/test workflow and
+[Third-party notices](THIRD_PARTY_NOTICES.md) for the binary redistribution policy.
 
 ## The port
 
@@ -117,14 +136,17 @@ gitignored; only port code and runtime glue are committed.
 
 ## Release status
 
-1. **PLAYABLE-V2 baseline — complete:** reproducible WPE/EGL runtime, libGL stub,
-   matched PLAYPAIR trio, native gamepad, and safe frontend lifecycle.
+1. **PLAYABLE-V2 engineering baseline — validated on one device:** WPE/EGL runtime,
+   libGL stub, matched PLAYPAIR trio, native gamepad, and frontend lifecycle.
 2. **Continuous-SFX fix — complete:** C2 `Audio:Is tag playing` now mirrors native
    voice state. This prevents `mrrun` and `bikemotor_loop` from retriggering every
    tick while preserving the game's explicit one-shot behavior.
-3. **Release hardening — complete for RG40xx H/muOS:** clean build, real-device
-   smoke test, BYO-only ZIP, checksum, rollback backup, and frontend restoration.
-4. **Wider targets** *(future)* — other devices and firmware remain unverified.
+3. **Performance/input investigation — open:** approximately 23 fps with drops to
+   7–13 fps; delayed WebProcess input can create phantom button combinations.
+4. **Public alpha — source/BYO:** `v0.1.0-alpha.1` publishes reproducible
+   source artifacts and CI; binary runtime distribution remains gated on a
+   complete license, provenance and codec audit.
+5. **Wider targets** *(future)* — other devices and firmware remain unverified.
 
 ### Required game export
 
@@ -135,7 +157,9 @@ the known-wrong export before deployment.
 
 ## Legal
 
-Port code licensed under **Apache 2.0**. The license covers the port code only.
+Original port code is licensed under [Apache 2.0](LICENSE). The license covers the
+port code only. Third-party runtime components retain their own licenses; see
+[Third-party notices](THIRD_PARTY_NOTICES.md).
 
 *Vengeful Guardian: Moonrider* and all its assets (engine, data, audio, sprites,
 artwork, icons) are the property of **JoyMasher / The Arcade Crew / Asteristic

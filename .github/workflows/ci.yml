@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install test prerequisites
+        run: sudo apt-get update && sudo apt-get install -y nodejs python3
+      - name: Verify source-only public release contract
+        run: sh scripts/verify-public-release.sh
+      - name: Reject commercial game assets and oversized blobs
+        run: |
+          set -eu
+          if git ls-files | grep -Ei '\.(ogg|mp3|wav|mp4|webm|png|jpe?g|webp|asar|exe)$'; then
+            echo 'Forbidden commercial/binary asset extension is tracked.' >&2
+            exit 1
+          fi
+          oversize=$(git ls-files -z | xargs -0 -r du -b | awk '$1 > 5242880 {print}')
+          if [ -n "$oversize" ]; then
+            echo "$oversize"
+            echo 'Tracked file exceeds the 5 MiB source-tree limit.' >&2
+            exit 1
+          fi
+      - name: Scan added repository content for common secrets
+        run: |
+          set -eu
+          if git grep -nEi '(password|passwd|api[_-]?key|secret|token)[[:space:]]*=[[:space:]]*["'"'][^"'"']{6,}["'"']|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY' -- .; then
+            echo 'Potential hard-coded secret detected.' >&2
+            exit 1
+          fi

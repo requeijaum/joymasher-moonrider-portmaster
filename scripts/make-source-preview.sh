@@ -7,7 +7,7 @@ set -euo pipefail
 export TZ=UTC
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${VERSION:-v0.1.0-alpha.1}"
+VERSION="${VERSION:-v0.1.0-alpha.2}"
 SOURCE_REF="${SOURCE_REF:-HEAD}"
 OUT_DIR="${OUT_DIR:-/tmp/moonrider-source-preview}"
 NAME="Moonrider-PortMaster-${VERSION#v}-source"

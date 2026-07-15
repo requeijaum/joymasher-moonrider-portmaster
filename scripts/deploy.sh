@@ -1,22 +1,60 @@
 #!/bin/bash
-# Deploy the port to a device over rsync/SSH for on-device testing.
-# Usage: scripts/deploy.sh [user@host] [/remote/roms/ports]
+# Deploy the port to a muOS device over rsync/SSH for on-device testing.
+#
+# This is a MANUAL install (not PortMaster/HarbourMaster autoinstall) — no zip
+# needed. rsync streams the staging tree straight to the device, incrementally
+# (resumes only what's missing) and works around the unionfs quirks on muOS.
+#
+# muOS layout (RG40xx H, 2508.4):
+#   launcher -> /mnt/union/ROMS/Ports/Moonrider.sh   (what the Ports menu lists)
+#   payload  -> /mnt/union/ports/moonrider/          (runtime/ + game/)
+#
+# The port payload (runtime + game) is gitignored, so deploy from a populated
+# staging tree, not the repo. Assemble it first (assemble-runtime-fresh.sh for
+# runtime, extract-assets.sh for game) or point STAGING at an existing one.
+#
+# Usage:
+#   SSHPASS=<devpass> STAGING=/tmp/moonrider-staging scripts/deploy.sh [host]
+#
+# Env:
+#   SSHPASS   device root password (required; muOS default is 'root')
+#   STAGING   staging dir containing Moonrider.sh + moonrider/ (default /tmp/moonrider-staging)
+#   HOST      device IP (default 192.168.1.115)
 set -euo pipefail
 
-HOST="${1:-}"
-REMOTE_PORTS="${2:-/roms/ports}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+HOST="${1:-${HOST:-192.168.1.115}}"
+STAGING="${STAGING:-/tmp/moonrider-staging}"
+PORTS_LAUNCHER="/mnt/union/ROMS/Ports/Moonrider.sh"
+PORTS_PAYLOAD="/mnt/union/ports/moonrider"
 
-if [ -z "$HOST" ]; then
-  echo "Usage: $0 user@host [/remote/roms/ports]" >&2
-  exit 1
+if [[ -z "${SSHPASS:-}" ]]; then
+  echo "Set SSHPASS to the device root password (muOS default: root)." >&2
+  exit 2
 fi
+if [[ ! -d "$STAGING/moonrider" ]]; then
+  echo "Staging tree not found: $STAGING/moonrider" >&2
+  echo "Assemble runtime + game into $STAGING first." >&2
+  exit 2
+fi
+export SSHPASS
+RSH="sshpass -e ssh -o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=15"
 
-echo "Deploying to $HOST:$REMOTE_PORTS"
-rsync -av --delete \
-  --exclude 'log.txt' --exclude '.xdg/' \
-  "$ROOT/Moonrider.sh" \
-  "$ROOT/moonrider" \
-  "$HOST:$REMOTE_PORTS/"
+# -L dereferences the game symlink; --no-owner/--no-group avoid unionfs chown
+# failures (fuse rejects chown, harmless); --no-perms lets the device keep its
+# 0777 defaults. Incremental: safe to re-run after an interrupted transfer.
+RSYNC_OPTS="-rlLtD --no-owner --no-group --no-perms --info=progress2"
 
-echo "Deployed. Launch 'Moonrider' from the Ports menu on device."
+echo "Deploying payload -> $HOST:$PORTS_PAYLOAD/"
+rsync $RSYNC_OPTS -e "$RSH" "$STAGING/moonrider/" "root@$HOST:$PORTS_PAYLOAD/"
+
+echo "Deploying launcher -> $HOST:$PORTS_LAUNCHER"
+rsync $RSYNC_OPTS -e "$RSH" "$STAGING/Moonrider.sh" "root@$HOST:$PORTS_LAUNCHER"
+
+echo "Making launcher + binaries executable"
+$RSH "root@$HOST" "
+  chmod +x '$PORTS_LAUNCHER' \
+    '$PORTS_PAYLOAD/runtime/run-moonrider.sh' \
+    '$PORTS_PAYLOAD/runtime/bin/'* 2>/dev/null || true
+"
+
+echo "Deployed. Launch 'Moonrider' from the Ports menu on the device."

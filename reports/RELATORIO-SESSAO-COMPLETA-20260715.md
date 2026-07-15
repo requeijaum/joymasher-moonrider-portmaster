@@ -39,7 +39,7 @@ Fixes de apoio: parar o frontend do muOS de verdade (`SAFE_QUIT`) e tirar
 
 - **Device:** RG40xx H, muOS 2508.4 LOOSE GOOSE, H700 (ARM aarch64), Mali-G31.
   Só fbdev + GLES (SEM Vulkan, SEM /dev/dri, SEM KMSDRM, SEM X11).
-- **IP:** 192.168.1.116 (DHCP — pode mudar após reboot). SSH root, sem pubkey.
+- **IP:** atribuído por DHCP e omitido do repositório público. SSH root, sem pubkey.
 - **Runtime WPE:** WebKit `libWPEWebKit-1.1.so.0.2.9` (md5 08bd49e1), libepoxy
   1.5.10 (2022, md5 fb6ba41d).
 - **Backend de render:** `libWPEBackend-mali-fbdev.so` (md5 e43e27ac) — EGL

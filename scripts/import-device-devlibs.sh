@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HOST="${HOST:-192.168.1.116}"
+HOST="${HOST:-}"
 # Device root password MUST be supplied via the SSHPASS env var; no default.
 if [[ -z "${SSHPASS:-}" ]]; then
   echo "Set SSHPASS to the device root password, e.g. SSHPASS=... $0" >&2
+  exit 2
+fi
+if [[ -z "$HOST" ]]; then
+  echo "Set HOST to the device hostname or IP." >&2
   exit 2
 fi
 SSHOPT="-o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=30 -o ServerAliveInterval=5"

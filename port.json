@@ -13,9 +13,6 @@
         "desc_pt": "Port do Vengeful Guardian: Moonrider (build Construct 2 / HTML5) rodando em runtime WPE WebKit aarch64 nativo, desenhando direto no framebuffer (mali-fbdev). Requer os arquivos do jogo do usuário. Testado apenas no Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
         "inst": "Provide your own legitimate game assets (Steam AppID 1942010 / GOG) via scripts/extract-assets.sh. No assets are bundled.",
         "genres": ["action", "platformer"],
-        "image": {
-            "screenshot": "screenshot.png"
-        },
         "rtr": false,
         "runtime": "",
         "reqs": ["gles"],

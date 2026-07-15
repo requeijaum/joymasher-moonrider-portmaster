@@ -56,7 +56,11 @@ ok "libGL EGL-forcing stub contract"
 
 # Idempotent shim injection test using a minimal fake C2 export in tmpfs.
 TMP=$(mktemp -d /tmp/moonrider-contract.XXXXXX)
-trap 'rm -rf "$TMP"' EXIT
+if [[ "${KEEP_TEST_TMP:-0}" = 1 ]]; then
+  echo "preserving contract directory: $TMP" >&2
+else
+  trap 'rm -rf "$TMP"' EXIT
+fi
 cat > "$TMP/index.html" <<'HTML'
 <!doctype html><html><body><script src="jquery.js"></script><script src="c2runtime.js"></script></body></html>
 HTML

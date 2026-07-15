@@ -1,7 +1,7 @@
 # Relatório de Sessão — Teste no Device (RG40xx H) e Diagnóstico do "Tela Preta"
 **Data:** 2026-07-15
 **Projeto:** moonrider-pm (Vengeful Guardian: Moonrider — Construct 2 / WPE WebKit / muOS)
-**Device:** RG40xx H, muOS 2508.4 LOOSE GOOSE, H700/Mali-G31, aarch64, SSH root@192.168.1.115
+**Device:** RG40xx H, muOS 2508.4 LOOSE GOOSE, H700/Mali-G31, aarch64, SSH root@<device-ip>
 
 ---
 

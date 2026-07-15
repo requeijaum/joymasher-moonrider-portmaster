@@ -30,7 +30,7 @@ DEST="${2:-$ROOT/moonrider/runtime}"
 ENGINE="$SCRATCH/engine/root/usr/lib/aarch64-linux-gnu"
 GSTAUDIO="$SCRATCH/gst-plugins-audio"
 BACKEND="$SCRATCH/backend"
-REF_RUN="$ROOT/../moonrider-portmaster-template/runtime/run-moonrider.sh"
+REF_RUN="$ROOT/runtime-config/run-moonrider.sh"
 
 echo "== assemble-runtime-fresh =="
 echo "  scratch: $SCRATCH"

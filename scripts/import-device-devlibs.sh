@@ -2,9 +2,14 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOST="${HOST:-192.168.1.115}"
-SSHPASS="${SSHPASS:-root}"
+# Device root password MUST be supplied via the SSHPASS env var; no default.
+if [[ -z "${SSHPASS:-}" ]]; then
+  echo "Set SSHPASS to the device root password, e.g. SSHPASS=... $0" >&2
+  exit 2
+fi
 SSHOPT="-o StrictHostKeyChecking=no -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=30 -o ServerAliveInterval=5"
-DST="$ROOT/audio-mixer/devlibs"
+# devlibs feed the audio-mixer link step; default to the build scratch tree.
+DST="${DEVLIBS_DEST:-/tmp/wpe-spike/audio-mixer/devlibs}"
 export SSHPASS
 mkdir -p "$DST"
 for lib in \

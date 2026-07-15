@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${1:-/tmp/wpe-spike/runtime}"
-DST="$ROOT/runtime"
+DST="$ROOT/moonrider/runtime"
 
 if [[ ! -d "$SRC" ]]; then
   echo "runtime source not found: $SRC" >&2

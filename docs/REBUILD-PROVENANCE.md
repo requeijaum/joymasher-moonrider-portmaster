@@ -106,7 +106,7 @@ the port zip). It is rebuilt from true sources by
 | `lib/` | WPE processes, cog modules, injected bundle (engine) + **our** mali-fbdev backend + glx-stub | 9 |
 | `gst-plugins/` | prepared audio set + core elements/tracers (engine) | 24 |
 | `bin/` | **our** fresh `moonrider-launch` + `cog` (engine) | 2 |
-| `run-moonrider.sh` | copied from known-good reference (config, not a binary) | — |
+| `run-moonrider.sh` | vendored from `runtime-config/run-moonrider.sh` (config, not a binary) | — |
 
 `registry.bin` is intentionally omitted — `run-moonrider.sh` regenerates the
 GStreamer registry in tmpfs on the device.

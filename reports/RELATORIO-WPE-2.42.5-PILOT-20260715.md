@@ -148,30 +148,103 @@ The hook was added with a RED/GREEN contract test: `tests/test-wpe-engine-overla
 - all repository shell tests passed;
 - `git diff --check` passed.
 
-## Safe device deployment plan
+## Device deployment and smoke result
 
-Do not overwrite `runtime/` or its 2.38 engine.
+The device became reachable at `192.168.1.115` on 2026-07-15.
 
-1. Confirm at least 180 MB free on the game filesystem.
-2. Deploy with:
+Pre-deployment state:
 
-```text
-rsync -rlptD --no-o --no-g device-overlay/ \
-  root@DEVICE:/mnt/sdcard/ports/moonrider/runtime-wpe-2.42/
-```
+- `/mnt/mmc`: 19 GB free;
+- `/mnt/sdcard`: 570 MB free;
+- PLAYABLE-V2 runtime remained at `/mnt/union/ports/moonrider/runtime`;
+- no Moonrider or WPE processes were running.
 
-3. Install the backward-compatible `run-moonrider.sh` engine hook.
-4. Start the pilot with:
+The pilot was deployed separately to:
 
 ```text
-MOONRIDER_WPE_ENGINE_DIR=/mnt/sdcard/ports/moonrider/runtime-wpe-2.42
+/mnt/mmc/moonrider-wpe-2.42
 ```
 
-5. Test boot, stage selector, gameplay, video, PLAYPAIR music, SFX, gamepad, shutdown and long-play.
-6. Collect the same-scene benchmark for 2.38 and 2.42.
+The target filesystem does not implement symbolic links. The first normal `rsync` therefore stopped with `Function not implemented`. A FAT-compatible closure was then assembled with every required SONAME stored as a regular file:
 
-Rollback requires only stopping with TERM and restarting without `MOONRIDER_WPE_ENGINE_DIR`. The 2.38 engine remains in place.
+- recursive closure: 77 libraries;
+- engine libraries copied: 33;
+- files in the FAT overlay: 38;
+- symlinks: zero;
+- compact FAT overlay size: 113 MB;
+- remote hashes: passed.
 
-## Current blocker
+The interrupted first transfer left harmless versioned target files beside the FAT-compatible closure, so the current remote directory occupies 235.5 MB. They were not removed because cleanup is unnecessary for function and would be destructive.
 
-`192.168.1.116` did not answer ping during final verification. No device files were modified and no physical A/B test was claimed.
+### Injected bundle correction
+
+WPE 2.42 contains the compiled directory:
+
+```text
+/usr/lib/aarch64-linux-gnu/wpe-webkit-1.1/injected-bundle/
+```
+
+`WEBKIT_INJECTED_BUNDLE_PATH` does not override this path in the tested binary. The initial smoke therefore tried the PLAYABLE-V2 injected bundle and reported the private-symbol mismatch:
+
+```text
+WebKitExtensionManager::singleton()
+```
+
+The game still loaded, but the mismatch was corrected. `scripts/patch-wpe-injected-bundle-path.py` performs an atomic, fixed-size, single-occurrence patch to:
+
+```text
+/mnt/mmc/w42/injected-bundle/
+```
+
+The replacement is shorter and NUL-padded, so no ELF offsets or file size change. A synthetic RED/GREEN test covers successful replacement, unchanged size and rejection of ambiguous duplicate occurrences.
+
+Patched device hashes are recorded in `manifests/WPE-2.42.5-DEVICE-PILOT.sha256`.
+
+### Controller and lifecycle
+
+`mr-ctl.sh` now provides:
+
+```text
+run [SECONDS]       # PLAYABLE-V2 / WPE 2.38
+run42 [SECONDS]     # isolated WPE 2.42 pilot
+log / rawlog        # baseline logs
+log42 / rawlog42    # pilot logs
+```
+
+Frontend teardown no longer invokes muOS `FRONTEND stop`, whose implementation contains a `KILL` fallback. The controller uses exact frontend PIDs and this sequence:
+
+```text
+USR1 -> timed wait -> TERM -> timed wait -> STOP only if still alive
+```
+
+Restoration removes `/tmp/safe_quit`, restores the native frontend environment, resumes any frozen exact PIDs, waits for their exit, and starts `FRONTEND start launcher` when required. No `kill -KILL` or broad `pkill` is used.
+
+### Executed smoke test
+
+The final hardware smoke used `mr-ctl.sh run42 8`. Observed results:
+
+- WPE 2.42 library selected from `/mnt/mmc/moonrider-wpe-2.42`;
+- loader trace had no `not found` dependency;
+- Mali/fbdev backend created at 640x480;
+- `WebKitWebView` created;
+- native mixer initialized;
+- gamepad shim V3 installed;
+- audio ghost V12 IPC installed;
+- page reached `LOAD_FINISHED`;
+- patched injected bundle produced no undefined-symbol warning;
+- no segfault, abort, assertion, fatal error or traceback;
+- launcher main loop ended cleanly;
+- controller recorded `exit=0`;
+- `frontend.sh` and `muxfrontend` were both alive after restoration and remained alive after an additional eight-second stability check.
+
+This proves boot, loader closure, EGL/fbdev initialization, JavaScript startup and lifecycle on hardware. It does not yet prove subjective audio correctness, PLAYPAIR handoff, every SFX, physical controls during gameplay, frame pacing or long-play stability.
+
+## Rollback
+
+The PLAYABLE-V2 engine was not overwritten. Immediate rollback is:
+
+```text
+/mnt/mmc/mr-ctl.sh run
+```
+
+The standard PortMaster launcher also remains on the PLAYABLE-V2 path. The WPE 2.42 pilot is selected only by `mr-ctl.sh run42`.

@@ -9,12 +9,16 @@
 #                  WebKit/WPE debug, capture EVERYTHING (incl. WPEWebProcess) to
 #                  a persistent log on eMMC, then restart the frontend.
 #                  Default 15s. Uses setsid so it survives the SSH session.
+#   run42 [SECONDS] Same controlled run using the isolated WPE 2.42 engine
+#                  overlay at /mnt/mmc/moonrider-wpe-2.42.
 #   kill           TERM the whole Moonrider chain (never KILL), free fb0,
 #                  restart the frontend.
 #   status         Show what's running + fb0 render check.
 #   log [N]        Print last N lines (default 80) of the last run log,
 #                  filtering the per-frame flood.
+#   log42 [N]      Print the filtered WPE 2.42 pilot log.
 #   rawlog         Print the full unfiltered log path + tail.
+#   rawlog42       Print the unfiltered WPE 2.42 pilot log tail.
 #
 # Log lives on eMMC (survives reboot AND the SSH-drop that wipes /run):
 #   /mnt/mmc/moonrider-diag.log
@@ -23,6 +27,7 @@ set -u
 D=/mnt/union/ports/moonrider/runtime
 GAMEDIR=/mnt/sdcard/ports/moonrider
 LOG=/mnt/mmc/moonrider-diag.log
+LOG42=/mnt/mmc/moonrider-diag-2.42.log
 LOCK=/run/moonrider.lock
 
 # BusyBox pgrep may not match executable paths reliably. Inspect argv[0] and
@@ -63,8 +68,7 @@ mr_env() {
   rm -f "$GST_REGISTRY" 2>/dev/null || true
 }
 
-frontend_stop() { . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND stop 2>/dev/null; }
-frontend_start() { . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start 2>/dev/null; }
+frontend_start() { . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start launcher 2>/dev/null; }
 
 mr_kill() {
   # Match executable names only. Never broad-match command lines or the SSH/controller.
@@ -83,33 +87,59 @@ mr_kill() {
 }
 
 case "${1:-}" in
-  run)
+  run|run42)
     SECS="${2:-15}"
-    echo "== mr-ctl run: ${SECS}s, log=$LOG =="
+    ENGINE="$D"
+    VARIANT=2.38
+    RUNLOG="$LOG"
+    RUNNER=/mnt/mmc/mr-run-inner.sh
+    LOGCMD=log
+    if [ "$1" = run42 ]; then
+      ENGINE=/mnt/mmc/moonrider-wpe-2.42
+      VARIANT=2.42
+      RUNLOG="$LOG42"
+      RUNNER=/mnt/mmc/mr-run-inner-2.42.sh
+      LOGCMD=log42
+      [ -f "$ENGINE/libs/libWPEWebKit-1.1.so.0" ] || {
+        echo "missing WPE 2.42 overlay: $ENGINE" >&2
+        exit 1
+      }
+    fi
+    echo "== mr-ctl run: WPE ${VARIANT}, ${SECS}s, log=$RUNLOG =="
     mr_kill >/dev/null 2>&1
-    : > "$LOG"
+    : > "$RUNLOG"
     # Write a self-contained runner and launch it fully detached so an SSH
     # disconnect (SIGHUP when frontend stops / pty drops) can't kill it.
-    RUNNER=/mnt/mmc/mr-run-inner.sh
     cat > "$RUNNER" <<INNER
 #!/bin/sh
-# --- robust frontend teardown ---------------------------------------------
-# muOS FRONTEND stop sends SIGUSR1 and only makes muxfrontend actually EXIT
-# when \$SAFE_QUIT is set (it writes that flag-file so the frontend's own
-# signal handler knows the quit is intentional). Launched over SSH we don't
-# inherit the muOS env, so we must provide SAFE_QUIT ourselves.
-export SAFE_QUIT=/run/muos_safe_quit
+# --- robust frontend teardown: USR1 -> TERM -> STOP, never KILL -----------
+. /opt/muos/script/var/func.sh 2>/dev/null || exit 1
+SAFE_QUIT=/tmp/safe_quit
+export SAFE_QUIT
+FRONTEND_LD_LIBRARY_PATH="\$LD_LIBRARY_PATH"
 : > "\$SAFE_QUIT" 2>/dev/null || true
-. /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND stop 2>/dev/null
-# Fallback: if muxfrontend survived (SAFE_QUIT path failed), FREEZE it so it
-# releases the framebuffer without being killed/restarted (SIGCONT at the end).
-FRONTEND_FROZEN=""
-if pidof muxfrontend >/dev/null 2>&1; then
-  kill -STOP "\$(pidof muxfrontend)" 2>/dev/null && FRONTEND_FROZEN=1
+SIGNAL_FRONTEND USR1
+I=5
+while FRONTEND_RUNNING && [ "\$I" -gt 0 ]; do
+  sleep 1
+  I=\$((I - 1))
+done
+if FRONTEND_RUNNING; then
+  SIGNAL_FRONTEND TERM
+  I=3
+  while FRONTEND_RUNNING && [ "\$I" -gt 0 ]; do
+    sleep 1
+    I=\$((I - 1))
+  done
+fi
+FROZEN_PIDS=""
+if FRONTEND_RUNNING; then
+  FROZEN_PIDS="\$(GET_FRONTEND_PIDS)"
+  for PID in \$FROZEN_PIDS; do kill -STOP "\$PID" 2>/dev/null || true; done
 fi
 sleep 1
 cd "$D"
-export LD_LIBRARY_PATH="$D/libs:$D/lib:/usr/lib/gl4es:/usr/lib:/lib"
+export LD_LIBRARY_PATH="$ENGINE/libs:$D/libs:$D/lib:/usr/lib/gl4es:/usr/lib:/lib"
 # CRITICO (fix 20260715): $D/libs contem uma libGL.so.1 STUB propria que precede
 # /usr/lib/gl4es no path. O libepoxy tem NEEDED libGL.so.1; se resolver o gl4es real
 # (que NAO exporta glXGetCurrentContext) o WebProcess ABORTA a init GL antes do 1o
@@ -128,29 +158,57 @@ export XDG_RUNTIME_DIR=/run PIPEWIRE_RUNTIME_DIR=/run
 export XDG_CACHE_HOME=/run/moonrider/.cache
 export WPE_BACKEND="$D/lib/libWPEBackend-mali-fbdev.so"
 export WPE_BACKEND_LIBRARY="$D/lib/libWPEBackend-mali-fbdev.so"
-export WEBKIT_EXEC_PATH="$D/lib/wpe-webkit-1.1"
-export WEBKIT_INJECTED_BUNDLE_PATH="$D/lib/wpe-webkit-1.1/injected-bundle"
+export WEBKIT_EXEC_PATH="$ENGINE/lib/wpe-webkit-1.1"
+export WEBKIT_INJECTED_BUNDLE_PATH="$ENGINE/lib/wpe-webkit-1.1/injected-bundle"
 export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
 export WEBKIT_FORCE_COMPOSITING_MODE=1 WEBKIT_FORCE_SANDBOX=0
 export LD_PRELOAD="$D/lib/glx-stub.so"
 export MUOS_DEBUG=1 WEBKIT_DEBUG=Process G_MESSAGES_DEBUG=all
 mkdir -p /run/moonrider "\$XDG_CACHE_HOME"
 rm -f "\$GST_REGISTRY" 2>/dev/null || true
-timeout ${SECS} "$D/bin/moonrider-launch" "file://$GAMEDIR/game/index.html" >> "$LOG" 2>&1
-echo "[mr-ctl] exit=\$?" >> "$LOG"
+echo "[mr-ctl] variant=$VARIANT engine=$ENGINE" >> "$RUNLOG"
+# Run with a hard time limit. timeout sends TERM (never KILL) at expiry.
+timeout ${SECS} "$D/bin/moonrider-launch" "file://$GAMEDIR/game/index.html" >> "$RUNLOG" 2>&1
+GAME_RC=\$?
 # Restore frontend: thaw if we froze it, else normal start.
-if [ -n "\$FRONTEND_FROZEN" ] && pidof muxfrontend >/dev/null 2>&1; then
-  kill -CONT "\$(pidof muxfrontend)" 2>/dev/null
-else
-  . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start 2>/dev/null
-fi
 rm -f "\$SAFE_QUIT" 2>/dev/null || true
+unset LD_PRELOAD LIBGL_FB LIBGL_ES
+unset WPE_BACKEND WPE_BACKEND_LIBRARY WPE_MALI_FBDEV_WIDTH WPE_MALI_FBDEV_HEIGHT
+unset WEBKIT_EXEC_PATH WEBKIT_INJECTED_BUNDLE_PATH WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS
+unset WEBKIT_FORCE_COMPOSITING_MODE WEBKIT_FORCE_SANDBOX WEBKIT_GST_DISABLE_GL_SINK WEBKIT_DEBUG
+unset GST_PLUGIN_SYSTEM_PATH GST_PLUGIN_PATH GST_PLUGIN_SYSTEM_PATH_1_0 GST_PLUGIN_PATH_1_0
+unset GST_REGISTRY GST_REGISTRY_FORK GST_REGISTRY_UPDATE
+unset G_MESSAGES_DEBUG G_DEBUG MALLOC_CHECK_ MUOS_AUDIO_SOCK MUOS_DEBUG XDG_CACHE_HOME
+export LD_LIBRARY_PATH="\$FRONTEND_LD_LIBRARY_PATH"
+if [ -n "\$FROZEN_PIDS" ]; then
+  for PID in \$FROZEN_PIDS; do kill -CONT "\$PID" 2>/dev/null || true; done
+  I=3
+  while FRONTEND_RUNNING && [ "\$I" -gt 0 ]; do
+    sleep 1
+    I=\$((I - 1))
+  done
+fi
+if ! FRONTEND_RUNNING; then
+  . /opt/muos/script/var/func.sh 2>/dev/null && FRONTEND start launcher 2>/dev/null
+fi
+I=10
+while ! pidof muxfrontend >/dev/null 2>&1 && [ "\$I" -gt 0 ]; do
+  sleep 1
+  I=\$((I - 1))
+done
+if pidof muxfrontend >/dev/null 2>&1; then
+  echo "[mr-ctl] frontend=running" >> "$RUNLOG"
+else
+  echo "[mr-ctl] frontend=FAILED" >> "$RUNLOG"
+fi
+echo "[mr-ctl] exit=\$GAME_RC" >> "$RUNLOG"
+exit "\$GAME_RC"
 INNER
     chmod +x "$RUNNER"
     # nohup + setsid + stdio fully redirected + background = immune to SSH SIGHUP.
     nohup setsid "$RUNNER" </dev/null >/dev/null 2>&1 &
-    echo "  launched detached (pid $!); log builds at $LOG"
-    echo "  poll with: mr-ctl.sh log   (wait ~$((SECS + 4))s)"
+    echo "  launched detached (pid $!); log builds at $RUNLOG"
+    echo "  poll with: mr-ctl.sh $LOGCMD   (wait up to ~$((SECS + 14))s)"
     ;;
   kill)
     echo "== mr-ctl kill =="
@@ -173,15 +231,19 @@ INNER
     h2=$(md5sum /dev/fb0 2>/dev/null | cut -d' ' -f1)
     [ "$h1" != "$h2" ] && echo "  fb0: CHANGING (rendering)" || echo "  fb0: static"
     ;;
-  log)
+  log|log42)
     N="${2:-80}"
-    grep -vE 'frame_will_render|frame_rendered|CHUNK' "$LOG" 2>/dev/null | tail -"$N"
+    READLOG="$LOG"
+    [ "$1" = log42 ] && READLOG="$LOG42"
+    grep -vE 'frame_will_render|frame_rendered|CHUNK' "$READLOG" 2>/dev/null | tail -"$N"
     ;;
-  rawlog)
-    echo "== $LOG =="
-    tail -120 "$LOG" 2>/dev/null
+  rawlog|rawlog42)
+    READLOG="$LOG"
+    [ "$1" = rawlog42 ] && READLOG="$LOG42"
+    echo "== $READLOG =="
+    tail -120 "$READLOG" 2>/dev/null
     ;;
   *)
-    echo "usage: mr-ctl.sh {run [secs]|kill|status|log [n]|rawlog}"
+    echo "usage: mr-ctl.sh {run|run42 [secs]|kill|status|log|log42 [n]|rawlog|rawlog42}"
     ;;
 esac

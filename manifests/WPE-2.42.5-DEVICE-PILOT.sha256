@@ -1,0 +1,8 @@
+# WPE WebKit 2.42.5 ARM64 device pilot, tested 2026-07-15
+# Device: 192.168.1.115
+# Engine directory: /mnt/mmc/moonrider-wpe-2.42
+# Injected bundle directory: /mnt/mmc/w42/injected-bundle
+# libWPEWebKit contains the fixed-size injected-bundle path patch.
+a58f9b46c75c2bb63331313b8ad0fcadb63d1c34539860c856d51663b2f7b7bd  device-overlay-fat-patched/libs/libWPEWebKit-1.1.so.0
+8be1128cf37b452f9e488e77cc22d8af19e5e815553729d998272e5265bb2463  device-overlay-fat-patched/injected-bundle/libWPEInjectedBundle.so
+7373ac96a567df2c1ba6bf6e102c118983abc2d59eb2c37d47b58300ab19cf33  scripts/mr-ctl.sh

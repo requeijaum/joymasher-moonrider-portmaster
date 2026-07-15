@@ -1,0 +1,17 @@
+# Game assets — never commit (copyrighted, bring-your-own)
+moonrider/game/
+moonrider/log.txt
+moonrider/.xdg/
+
+# Build artifacts
+*.zip
+Moonrider.zip
+
+# Runtime scratch
+__pycache__/
+*.pyc
+*.o
+
+# Editor / OS
+.DS_Store
+*.swp

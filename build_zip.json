@@ -1,0 +1,9 @@
+{
+    "zip_file": "Moonrider.zip",
+    "files": [
+        "Moonrider.sh",
+        "moonrider/",
+        ["README.md", "moonrider/README.md"],
+        ["build", "moonrider"]
+    ]
+}

@@ -2,6 +2,10 @@
 # Build a deterministic source/BYO preview from a committed git ref.
 set -euo pipefail
 
+# Git's ZIP backend writes DOS timestamps in the process timezone. Normalize it
+# so the same commit produces byte-identical artifacts on any host.
+export TZ=UTC
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${VERSION:-v0.1.0-alpha.1}"
 SOURCE_REF="${SOURCE_REF:-HEAD}"

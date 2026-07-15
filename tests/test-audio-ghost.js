@@ -9,7 +9,9 @@ global.window = global;
 global.location = { pathname: '/tmp/moonrider/game/index.html' };
 global.innerWidth = 640;
 global.innerHeight = 480;
-global.navigator = {};
+Object.defineProperty(global, 'navigator', {
+  value: {}, writable: true, configurable: true
+});
 global.webkit = { messageHandlers: {
   muosAudio: { postMessage: m => messages.push(m) },
   muosExit: { postMessage: () => {} }

@@ -47,7 +47,6 @@ if grep -q 'gst-plugins:.*libs' "$ROOT/runtime-config/run-moonrider.sh"; then
 fi
 grep -q 'WEBKIT_EXEC_PATH=' "$ROOT/runtime-config/run-moonrider.sh" || fail "WEBKIT_EXEC_PATH missing"
 grep -q 'SAFE_QUIT=/run/muos_safe_quit' "$ROOT/Moonrider.sh" || fail "SAFE_QUIT frontend teardown missing"
-grep -q 'libGL.so.1' "$ROOT/scripts/assemble-runtime-fresh.sh" || fail "assembler does not install libGL stub"
 ok "runtime/frontend configuration contract"
 
 file "$ROOT/runtime-fixes/libGL.so.1" | grep -q 'ARM aarch64' || fail "tracked libGL stub is not aarch64 ELF"

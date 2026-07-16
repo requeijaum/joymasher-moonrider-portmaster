@@ -1,58 +1,89 @@
 #!/bin/bash
-# Build a PortMaster/HarbourMaster zip from an explicit staging tree.
-#
-# Required staging layout:
-#   Moonrider.sh
-#   port.json
-#   moonrider/runtime/
-#   moonrider/game/          optional for canonical BYO release
-#
-# Env:
-#   STAGING=/tmp/moonrider-release-stage
-#   MOONRIDER_OUT=/tmp/Moonrider-BYO.zip
-#   MOONRIDER_INCLUDE_GAME=0   default; never redistributes proprietary assets
+# Build an asset-free PortMaster ZIP from an approved, populated staging tree.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAGING="${STAGING:-$ROOT}"
-OUT="${MOONRIDER_OUT:-/tmp/Moonrider-BYO.zip}"
-INCLUDE_GAME="${MOONRIDER_INCLUDE_GAME:-0}"
+OUT="${MOONRIDER_OUT:-/tmp/Moonrider-PortMaster-BYO.zip}"
 
-for f in Moonrider.sh port.json moonrider/runtime/run-moonrider.sh; do
-  [[ -e "$STAGING/$f" ]] || { echo "Missing staging artifact: $STAGING/$f" >&2; exit 2; }
+required=(
+  Moonrider.sh
+  port.json
+  moonrider/ASSETS-HERE.txt
+  moonrider/runtime/run-moonrider.sh
+  moonrider/runtime/bin/moonrider-launch
+  moonrider/runtime/lib/libWPEBackend-mali-fbdev.so
+  moonrider/runtime/libs/libGL.so.1
+  moonrider/runtime/lib/wpe-webkit-1.1/WPEWebProcess
+)
+for rel in "${required[@]}"; do
+  [[ -f "$STAGING/$rel" ]] || {
+    echo "Missing installable staging artifact: $rel" >&2
+    exit 2
+  }
 done
-[[ -x "$STAGING/Moonrider.sh" ]] || chmod +x "$STAGING/Moonrider.sh"
-[[ "$INCLUDE_GAME" = 0 || "$INCLUDE_GAME" = 1 ]] || { echo "MOONRIDER_INCLUDE_GAME must be 0 or 1" >&2; exit 2; }
 
-# Output must stay outside the staging tree to avoid recursively packaging itself.
+shopt -s nullglob
+wpe_libs=("$STAGING"/moonrider/runtime/libs/libWPEWebKit-1.1.so*)
+(( ${#wpe_libs[@]} > 0 )) || {
+  echo "Missing installable staging artifact: runtime/libs/libWPEWebKit-1.1.so*" >&2
+  exit 2
+}
+
+for rel in \
+  moonrider/runtime/bin/moonrider-launch \
+  moonrider/runtime/lib/libWPEBackend-mali-fbdev.so \
+  moonrider/runtime/libs/libGL.so.1 \
+  moonrider/runtime/lib/wpe-webkit-1.1/WPEWebProcess; do
+  file "$STAGING/$rel" | grep -q 'ARM aarch64' || {
+    echo "Runtime artifact is not an aarch64 binary: $rel" >&2
+    exit 2
+  }
+done
+file "${wpe_libs[0]}" | grep -q 'ARM aarch64' || {
+  echo "libWPEWebKit is not an aarch64 binary" >&2
+  exit 2
+}
+
+[[ -x "$STAGING/Moonrider.sh" ]] || chmod +x "$STAGING/Moonrider.sh"
+[[ -x "$STAGING/moonrider/runtime/run-moonrider.sh" ]] || \
+  chmod +x "$STAGING/moonrider/runtime/run-moonrider.sh"
+
 case "$(realpath -m "$OUT")" in
-  "$(realpath "$STAGING")"/*) echo "Output cannot be inside staging: $OUT" >&2; exit 2 ;;
+  "$(realpath "$STAGING")"/*)
+    echo "Output cannot be inside staging: $OUT" >&2
+    exit 2
+    ;;
 esac
 
-rm -f "$OUT"
-EXCLUDES=(-x 'moonrider/log.txt' 'moonrider/.xdg/*' '*__pycache__*' '*.pyc' '*.bak')
-if [[ "$INCLUDE_GAME" != 1 ]]; then
-  EXCLUDES+=(-x 'moonrider/game/*')
-fi
-
+rm -f "$OUT" "$OUT.sha256"
 (
   cd "$STAGING"
-  zip -qr "$OUT" Moonrider.sh port.json moonrider "${EXCLUDES[@]}"
+  zip -Xqr "$OUT" Moonrider.sh port.json moonrider \
+    -x 'moonrider/game/*' 'moonrider/log.txt' 'moonrider/.xdg/*' \
+       '*__pycache__*' '*.pyc' '*.bak'
 )
 
-# Release assertions.
 unzip -tq "$OUT" >/dev/null
 LIST=$(mktemp /tmp/moonrider-zip-list.XXXXXX)
 trap 'rm -f "$LIST"' EXIT
 unzip -Z1 "$OUT" > "$LIST"
-grep -qx 'Moonrider.sh' "$LIST" || { echo "Launcher absent from zip" >&2; exit 1; }
-grep -qx 'port.json' "$LIST" || { echo "port.json absent from zip" >&2; exit 1; }
-grep -qx 'moonrider/runtime/run-moonrider.sh' "$LIST" || { echo "Runtime absent from zip" >&2; exit 1; }
-if [[ "$INCLUDE_GAME" != 1 ]] && grep -q '^moonrider/game/.*\.' "$LIST"; then
-  echo "BYO release leaked game files" >&2; exit 1
+for rel in \
+  Moonrider.sh \
+  port.json \
+  moonrider/ASSETS-HERE.txt \
+  moonrider/runtime/run-moonrider.sh \
+  moonrider/runtime/bin/moonrider-launch; do
+  grep -qx "$rel" "$LIST" || {
+    echo "Required package entry absent: $rel" >&2
+    exit 1
+  }
+done
+if grep -q '^moonrider/game/.*[^/]$' "$LIST"; then
+  echo "BYO package leaked game files" >&2
+  exit 1
 fi
 
 sha256sum "$OUT" > "$OUT.sha256"
-printf 'Built: %s\n' "$OUT"
-du -h "$OUT"
+printf 'Built installable BYO package: %s\n' "$OUT"
 cat "$OUT.sha256"

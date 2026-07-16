@@ -1,5 +1,5 @@
 /*
- * muos_audio_ghost.js — v11 auditado: IPC nativo, PLAYPAIR, pause e SFX polifonicos
+ * muos_audio_ghost.js — v12: IPC nativo, PLAYPAIR, pause e SFX polifônicos
  *
  * Arquitetura FINAL (confirmada pelo spike v3): NAO tocar no HTMLMediaElement.prototype
  * (isso travava a engine na tela branca). Interceptar a API de alto nivel do Audio plugin

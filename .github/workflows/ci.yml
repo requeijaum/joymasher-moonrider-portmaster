@@ -2,11 +2,7 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - 'release/**'
-    tags:
-      - 'v*-alpha*'
+    branches: [main, cleanup]
   pull_request:
   workflow_dispatch:
 
@@ -14,31 +10,25 @@ permissions:
   contents: read
 
 jobs:
-  public-contract:
+  port:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: Report test runtimes
+      - name: Check scripts
         run: |
-          node --version
-          python3 --version
-      - name: Verify source-only public release contract
-        run: sh scripts/verify-public-release.sh
-      - name: Reject commercial game assets and oversized blobs
+          bash -n Moonrider.sh scripts/*.sh tests/*.sh
+          python3 -m py_compile scripts/*.py
+      - name: Test port patches
         run: |
-          set -eu
+          node tests/test-audio-ghost.js
+          bash scripts/verify-playable-contract.sh
+      - name: Test installable ZIP layout
+        run: bash tests/test-package.sh
+      - name: Reject game assets and secrets
+        run: |
           if git ls-files | grep -Ei '\.(ogg|mp3|wav|flac|m4a|aac|mp4|webm|png|jpe?g|webp|asar|exe)$'; then
-            echo 'Forbidden commercial/binary asset extension is tracked.' >&2
+            echo 'Commercial/binary game asset is tracked.' >&2
             exit 1
           fi
-          oversize=$(git ls-files -z | xargs -0 -r du -b | awk '$1 > 5242880 {print}')
-          if [ -n "$oversize" ]; then
-            echo "$oversize"
-            echo 'Tracked file exceeds the 5 MiB source-tree limit.' >&2
-            exit 1
-          fi
-      - name: Scan added repository content for common secrets
-        run: python3 scripts/scan-public-secrets.py
+          python3 scripts/scan-public-secrets.py

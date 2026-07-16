@@ -24,14 +24,18 @@ fi
 GLIB_CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include"
 GLIB_LIBS="-lglib-2.0 -lgobject-2.0 -lgio-2.0"
 
-echo "=== [1/3] mixer de audio: muos_audio_mixer.o (miniaudio + libvorbis) ==="
-# miniaudio abre libasound via dlopen em runtime (-ldl). libvorbisfile/vorbis/ogg linkadas.
-# headers vorbis copiados do host em audio-mixer/vorbis-headers; libs do device em audio-mixer/devlibs.
-$CC -O2 -c \
-  -I audio-mixer -I audio-mixer/vorbis-headers \
-  audio-mixer/muos_audio_mixer.c \
-  -o audio-mixer/muos_audio_mixer.o
-echo "mixer.o OK: $(file audio-mixer/muos_audio_mixer.o | cut -d, -f1-2)"
+echo "=== [1/3] audio service: queue + worker + miniaudio owner backend ==="
+# miniaudio opens libasound through dlopen at runtime; only miniaudio_backend.c
+# contains its implementation. All WebKit-facing APIs link against the queue worker.
+AUDIO_OBJECTS=""
+for unit in audio_command_queue audio_worker muos_audio_mixer miniaudio_backend; do
+  $CC -O2 -pthread -c \
+    -I audio-mixer -I audio-mixer/vorbis-headers \
+    "audio-mixer/${unit}.c" \
+    -o "audio-mixer/${unit}.o"
+  AUDIO_OBJECTS="$AUDIO_OBJECTS audio-mixer/${unit}.o"
+done
+echo "audio objects OK: $AUDIO_OBJECTS"
 
 echo "=== [2/3] launcher: moonrider-launch (com evdev_gamepad + mixer) ==="
 $CC -O2 \
@@ -40,7 +44,8 @@ $CC -O2 \
   -I"$R/usr/include/libsoup-3.0" \
   -I audio-mixer \
   $GLIB_CFLAGS \
-  backend/moonrider-launch.c backend/evdev_gamepad.c audio-mixer/muos_audio_mixer.o \
+  backend/moonrider-launch.c backend/evdev_gamepad.c backend/input_mailbox.c \
+  $AUDIO_OBJECTS \
   -o backend/moonrider-launch \
   -L"$R/usr/lib/aarch64-linux-gnu" \
   -L/work/audio-mixer/devlibs \

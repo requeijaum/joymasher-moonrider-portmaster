@@ -1,2 +1,0 @@
-FROM --platform=linux/arm64 debian:bookworm-slim
-RUN apt-get update -qq && apt-get install -y -qq gcc libglib2.0-dev pkg-config && rm -rf /var/lib/apt/lists/*

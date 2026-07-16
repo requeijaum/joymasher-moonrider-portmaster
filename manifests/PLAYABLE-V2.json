@@ -1,25 +1,34 @@
 {
   "contract": "PLAYABLE-V2",
   "target": "Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE",
-  "date": "2026-07-15",
-  "inherits": "PLAYABLE-V1",
-  "fix": "C2 Audio IsTagPlaying now mirrors active native voices; prevents per-tick mrrun/bikemotor_loop retriggers",
-  "artifacts_md5": {
-    "runtime/bin/moonrider-launch": "5fb4cbd47ee802dfb1636f65bd27d41d",
+  "date": "2026-07-16",
+  "fix": "Input V4 plus native audio-owner worker: bounded/coalesced command queue, deferred voice retirement, miniaudio lifecycle isolation, watchdog telemetry, and circuit breaker",
+  "known_good_note": "Physically verified on RG40xx H with native audio enabled: the former crash trigger passed, 504 consecutive heartbeats and 24,292 processed audio commands with zero drops, stalls or breaker trips. Binary runtime remains private and not approved for redistribution.",
+  "known_good_device_artifacts_md5": {
+    "runtime/bin/moonrider-launch": "6efca7043208277c3e756897a567c1da",
     "runtime/lib/libWPEBackend-mali-fbdev.so": "e43e27acee6960a5ac8ee2ca0011dd02",
     "runtime/libs/libGL.so.1": "1115e827437465a2221e0baf8611379e",
-    "game/muos_audio_ghost.js": "13dd4f10f6a38c14dc2675d3c8d5185a",
-    "game/muos_gamepad_shim.js": "9ac802efe0c71b2fdee25724aebbfe57"
+    "patches/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
+    "patches/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b"
   },
   "canonical_sources_md5": {
     "runtime-fixes/libgl-stub.c": "b920abb2b57c3307334e869f60473727",
     "runtime-fixes/libGL.so.1": "1115e827437465a2221e0baf8611379e",
     "native/backend/backend-mali-fbdev.c": "7861dd788b3407fa5450840c7fab0022",
-    "native/backend/moonrider-launch.c": "a6863aa32b7fe4a864a6dabe8cdb1957",
-    "native/audio-mixer/muos_audio_mixer.c": "292f24c29ae752705658f2abd2d40013",
-    "shims/muos_audio_ghost.js": "13dd4f10f6a38c14dc2675d3c8d5185a",
-    "shims/muos_gamepad_shim.js": "9ac802efe0c71b2fdee25724aebbfe57",
-    "runtime-config/run-moonrider.sh": "712d1e3f4a8b81243a58092a4cbf6892"
+    "native/backend/moonrider-launch.c": "7c5a95fd05018028758d5410f5f9734e",
+    "native/backend/input_mailbox.c": "5a296810a58c4ce9be9926feab3fe6ac",
+    "native/backend/input_mailbox.h": "89e42cf739f65a288e2d50524a67d534",
+    "native/audio-mixer/muos_audio_mixer.c": "82886fe0280217046db9f2f485ba9281",
+    "native/audio-mixer/muos_audio_mixer.h": "ea2f8a647f2614a801f66aa34b218476",
+    "native/audio-mixer/audio_command_queue.c": "8a077887f78f7d2775430252d5104ea0",
+    "native/audio-mixer/audio_command_queue.h": "d489fa3924f06ac252e17025b629c67f",
+    "native/audio-mixer/audio_worker.c": "8c390601ab5ac4cd19d003f6e419afd9",
+    "native/audio-mixer/audio_worker.h": "7cad7be11840ba305f1b8626e2b3ab5d",
+    "native/audio-mixer/miniaudio_backend.c": "c5a2137aba4c97a5fd6204dac4a35a76",
+    "native/audio-mixer/miniaudio_backend.h": "5c377cdbc1cb933b9ddfbe4f44f7fa0f",
+    "moonrider/patches/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
+    "moonrider/patches/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b",
+    "runtime-config/run-moonrider.sh": "0e3218472bda41d309ca5363faf04122"
   },
   "game_export": "desktop/Electron Construct 2 export from device known-good backup; not raw Android-derived export",
   "game_core_md5": {

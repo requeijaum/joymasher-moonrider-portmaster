@@ -1,0 +1,45 @@
+{
+  "version": 4,
+  "name": "moonrider.zip",
+  "items": [
+    "Moonrider.sh",
+    "moonrider"
+  ],
+  "items_opt": [],
+  "attr": {
+    "title": "Vengeful Guardian: Moonrider",
+    "porter": [
+      "requeijaum"
+    ],
+    "desc": "Construct 2 / HTML5 build of Vengeful Guardian: Moonrider on a bundled aarch64 WPE WebKit runtime rendered straight to the framebuffer (mali-fbdev). Requires the user's own game assets. Tested only on Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE.",
+    "desc_md": null,
+    "inst": "After installing the BYO package, copy the unchanged contents of your legitimate desktop/Electron game export to the moonrider/game directory. Required: index.html, c2runtime.js, data.js, images/, media/, CSV files and the intro MP4. The launcher injects the maintained audio/gamepad patches automatically.",
+    "inst_md": "After installing the BYO package, copy the unchanged contents of your legitimate desktop/Electron game export to `moonrider/game/`. Required: `index.html`, `c2runtime.js`, `data.js`, `images/`, `media/`, CSV files and the intro MP4. The launcher injects the maintained audio/gamepad patches automatically.",
+    "genres": [
+      "action",
+      "platformer"
+    ],
+    "image": null,
+    "rtr": false,
+    "exp": true,
+    "runtime": [],
+    "store": [
+      {
+        "name": "Steam",
+        "gameurl": "https://store.steampowered.com/app/1942010/Vengeful_Guardian_Moonrider/",
+        "developerurl": "https://www.joymasher.com/"
+      },
+      {
+        "name": "GOG",
+        "gameurl": "https://www.gog.com/en/game/vengeful_guardian_moonrider",
+        "developerurl": "https://www.joymasher.com/"
+      }
+    ],
+    "availability": "paid",
+    "reqs": [],
+    "arch": [
+      "aarch64"
+    ],
+    "min_glibc": ""
+  }
+}

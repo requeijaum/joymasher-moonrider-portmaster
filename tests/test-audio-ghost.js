@@ -36,7 +36,7 @@ instance.runtime = runtime;
 global.cr = { plugins_: { Audio } };
 global.cr_getC2Runtime = () => runtime;
 
-require(path.resolve(__dirname, '../shims/muos_audio_ghost.js'));
+require(path.resolve(__dirname, '../moonrider/patches/muos_audio_ghost.js'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

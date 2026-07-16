@@ -1,15 +1,20 @@
-# Bundled aarch64 WPE runtime goes here.
-#
-# Populated by the runtime-import step (see docs/CROSS-COMPILE.md), NOT by hand.
-# Expected subtree once imported:
-#
-#   bin/moonrider-launch          our WPE launcher (cross-compiled in wpebuild:cpp)
-#   lib/libWPEBackend-mali-fbdev.so   fbdev/Mali present backend (our build)
-#   lib/glx-stub.so               legacy GLX shim
-#   lib/wpe-webkit-1.1/           WPEWebProcess, WPENetworkProcess, injected-bundle
-#   libs/*.so                     WPEWebKit, GStreamer, ICU, wayland, epoxy, gbm, ...
-#   gst-plugins/*.so              GStreamer plugins for OGG/Vorbis/MP4 audio
-#   run-moonrider.sh              sets LD_LIBRARY_PATH / WPE_BACKEND, execs launcher
-#
-# NOTE: this port does NOT use cog — presentation is done by moonrider-launch.
-# Keeping this placeholder so git tracks the empty runtime/ directory.
+# Runtime directory
+
+Installable packages place the approved aarch64 WPE WebKit runtime here. The
+runtime is intentionally absent from Git; source code alone is not playable.
+
+Required release contents:
+
+- `run-moonrider.sh` and the complete aarch64 runtime tree;
+- `gst-plugins/*.so` and `lib/glx-stub.so` used by the launcher;
+- `RUNTIME-PROVENANCE.md` with exact versions, sources, patches and build flags;
+- `LICENSES/` with the applicable third-party notices and license texts;
+- `RUNTIME-MANIFEST.sha256`, generated after the tree is final with:
+
+```bash
+python3 scripts/generate-runtime-manifest.py /path/to/staging/moonrider/runtime
+```
+
+The manifest proves byte-for-byte inventory consistency, not redistribution
+permission. The legal/provenance/codec gates in `THIRD_PARTY_NOTICES.md` must
+also pass before a binary runtime is published.

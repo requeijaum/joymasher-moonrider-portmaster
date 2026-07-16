@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gameList>
+  <game>
+    <path>./Moonrider.sh</path>
+    <name>Vengeful Guardian: Moonrider</name>
+    <desc>Unofficial native WPE WebKit port. Requires a legitimate desktop game export.</desc>
+    <releasedate>20230112T000000</releasedate>
+    <developer>JoyMasher</developer>
+    <publisher>The Arcade Crew</publisher>
+    <genre>Action</genre>
+  </game>
+</gameList>

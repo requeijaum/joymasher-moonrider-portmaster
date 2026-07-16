@@ -54,4 +54,4 @@ A runtime ZIP must not be published merely because a local build runs. Before up
 7. confirm that LGPL dependencies remain dynamically linked and relinkable;
 8. reject components whose redistribution terms have not been classified.
 
-Until those gates pass, GitHub releases are source/BYO previews and do not include the WPE binary runtime.
+Until those gates pass, public GitHub releases are source/BYO previews and do not include the WPE binary runtime. Private owner-only backup releases are not approval for public redistribution.

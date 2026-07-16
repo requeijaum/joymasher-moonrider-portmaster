@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, cleanup]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -23,14 +23,19 @@ jobs:
         run: |
           node tests/test-audio-ghost.js
           bash scripts/verify-playable-contract.sh
-      - name: Test installable ZIP layout
+      - name: Test BYO package structure with synthetic runtime
         run: |
-          KEEP_TEST_TMP=1 bash tests/test-package.sh
+          bash tests/test-package.sh
           bash tests/test-byo-runtime-shims.sh
+          bash tests/test-extract-assets.sh
       - name: Reject game assets and secrets
         run: |
           if git ls-files | grep -Ei '\.(ogg|mp3|wav|flac|m4a|aac|mp4|webm|png|jpe?g|webp|asar|exe)$'; then
             echo 'Commercial/binary game asset is tracked.' >&2
+            exit 1
+          fi
+          if git ls-files | grep -Ei '(^|/)(c2runtime\.js|data\.js|index\.html|images/|media/)|\.csv$'; then
+            echo 'Commercial Construct 2 payload is tracked.' >&2
             exit 1
           fi
           python3 scripts/scan-public-secrets.py

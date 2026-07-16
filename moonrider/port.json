@@ -23,9 +23,7 @@
     "rtr": false,
     "exp": true,
     "runtime": [],
-    "reqs": [
-      "gles"
-    ],
+    "reqs": [],
     "arch": [
       "aarch64"
     ],

@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify-playable-contract.sh — regression gate for the Moonrider playable state.
+# Source/package regression gate. Device playability remains a separate smoke test.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -53,31 +53,10 @@ file "$ROOT/runtime-fixes/libGL.so.1" | grep -q 'ARM aarch64' || fail "tracked l
 grep -q 'glXGetCurrentContext' "$ROOT/runtime-fixes/libgl-stub.c" || fail "stub source lacks glXGetCurrentContext"
 ok "libGL EGL-forcing stub contract"
 
-# Idempotent shim injection test using a minimal fake C2 export in tmpfs.
-TMP=$(mktemp -d /tmp/moonrider-contract.XXXXXX)
-if [[ "${KEEP_TEST_TMP:-0}" = 1 ]]; then
-  echo "preserving contract directory: $TMP" >&2
-else
-  trap 'rm -rf "$TMP"' EXIT
-fi
-cat > "$TMP/index.html" <<'HTML'
-<!doctype html><html><body><script src="jquery.js"></script><script src="c2runtime.js"></script></body></html>
-HTML
-cat > "$TMP/c2runtime.js" <<'JS'
-function cr_getC2Runtime(){}; var running_layout; var cr={plugins_:{Audio:{}}};
-cr.plugins_.Audio = cr.plugins_.Audio || {};
-JS
-python3 "$ROOT/scripts/apply-port-layer.py" "$TMP" >/dev/null
-python3 "$ROOT/scripts/apply-port-layer.py" "$TMP" >/dev/null
-[[ $(grep -c 'BEGIN MOONRIDER-MUOS-LAYER' "$TMP/index.html") -eq 1 ]] || fail "shim injection is not idempotent"
-[[ $(grep -c 'muos_audio_ghost.js' "$TMP/index.html") -eq 1 ]] || fail "audio ghost tag duplicated"
-python3 - "$TMP/index.html" <<'PY'
-from pathlib import Path
-import sys
-s=Path(sys.argv[1]).read_text()
-assert s.index('muos_gamepad_shim.js') < s.index('muos_audio_ghost.js') < s.index('c2runtime.js')
-PY
-ok "game-layer injection is ordered and idempotent"
+# BYO assets remain byte-identical; runtime shims are injected by the launcher.
+bash "$ROOT/tests/test-extract-assets.sh" >/dev/null || fail "raw BYO extraction contract failed"
+bash "$ROOT/tests/test-byo-runtime-shims.sh" >/dev/null || fail "runtime shim injection contract failed"
+ok "raw BYO extraction and runtime injection contract"
 
 # Optional assembled staging contract.
 if [[ -n "$PORT_ROOT" ]]; then
@@ -93,21 +72,19 @@ if [[ -n "$PORT_ROOT" ]]; then
   grep -q 'PLAYPAIR|' "$P/muos_audio_ghost.js" || fail "staging ghost lacks PLAYPAIR"
   python3 - "$ROOT" "$PORT_ROOT" <<'PY'
 from pathlib import Path
-import hashlib, json, sys
+import hashlib, sys
 root, port = map(Path, sys.argv[1:])
-manifest = json.loads((root / "manifests/PLAYABLE-V2.json").read_text())
-for rel, expected in manifest["game_core_md5"].items():
-    actual = hashlib.md5((port / "game" / rel).read_bytes()).hexdigest()
-    if actual != expected:
-        raise SystemExit(f"FAIL: wrong game export: {rel}: {actual} != {expected}")
+game = port / "game"
+if game.exists() and any(path.is_file() for path in game.rglob("*")):
+    raise SystemExit("FAIL: asset-free BYO staging contains commercial game files")
 for name in ("muos_audio_ghost.js", "muos_gamepad_shim.js"):
     src = root / "moonrider/patches" / name
     packaged = port / "patches" / name
     if hashlib.sha256(src.read_bytes()).digest() != hashlib.sha256(packaged.read_bytes()).digest():
         raise SystemExit(f"FAIL: packaged patch drift: {name}")
-print("OK: BYO staging uses the tested game export and canonical port patches")
+print("OK: asset-free BYO staging uses canonical runtime patches")
 PY
-  ok "assembled staging satisfies PLAYABLE-V2"
+  ok "assembled BYO staging satisfies the current port contract"
 fi
 
-echo "PASS: Moonrider PLAYABLE-V2 contract"
+echo "PASS: Moonrider source/BYO contract (device smoke test still required)"

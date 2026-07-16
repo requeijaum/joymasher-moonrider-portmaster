@@ -9,6 +9,8 @@ OUT="$TMP/moonrider.zip"
 mkdir -p \
   "$STAGE/moonrider/runtime/bin" \
   "$STAGE/moonrider/runtime/lib/wpe-webkit-1.1" \
+  "$STAGE/moonrider/runtime/gst-plugins" \
+  "$STAGE/moonrider/runtime/LICENSES" \
   "$STAGE/moonrider/runtime/libs" \
   "$STAGE/moonrider/patches" \
   "$STAGE/moonrider/game/media" \
@@ -23,13 +25,26 @@ cp "$ROOT/runtime-config/run-moonrider.sh" "$STAGE/moonrider/runtime/run-moonrid
 for rel in \
   bin/moonrider-launch \
   lib/libWPEBackend-mali-fbdev.so \
+  lib/glx-stub.so \
   libs/libGL.so.1 \
   libs/libWPEWebKit-1.1.so.0 \
-  lib/wpe-webkit-1.1/WPEWebProcess; do
+  lib/wpe-webkit-1.1/WPEWebProcess \
+  gst-plugins/libgstcoreelements.so \
+  gst-plugins/libgstcoretracers.so; do
   cp "$ROOT/runtime-fixes/libGL.so.1" "$STAGE/moonrider/runtime/$rel"
+done
+for n in $(seq -w 1 22); do
+  cp "$ROOT/runtime-fixes/libGL.so.1" \
+    "$STAGE/moonrider/runtime/gst-plugins/libgstsynthetic$n.so"
 done
 printf '\0MOONRIDER_SHIM_DIR\0muos_gamepad_shim.js\0muos_audio_ghost.js\0' \
   >> "$STAGE/moonrider/runtime/bin/moonrider-launch"
+printf 'Synthetic test-only provenance; not releasable.\n' > \
+  "$STAGE/moonrider/runtime/RUNTIME-PROVENANCE.md"
+printf 'Synthetic test-only license payload.\n' > \
+  "$STAGE/moonrider/runtime/LICENSES/TEST-ONLY.txt"
+python3 "$ROOT/scripts/generate-runtime-manifest.py" \
+  "$STAGE/moonrider/runtime" >/dev/null
 printf 'must not ship\n' > "$STAGE/moonrider/game/c2runtime.js"
 printf 'nested asset must not ship\n' > "$STAGE/moonrider/game/media/private.ogg"
 
@@ -46,8 +61,16 @@ fi
 unzip -Z1 "$OUT" | grep -qx 'moonrider/patches/muos_gamepad_shim.js'
 unzip -Z1 "$OUT" | grep -qx 'moonrider/patches/muos_audio_ghost.js'
 python3 - "$OUT" <<'PY'
-import sys, zipfile
+import json, sys, zipfile
 with zipfile.ZipFile(sys.argv[1]) as zf:
+    metadata = json.loads(zf.read('moonrider/port.json'))
+    assert metadata['version'] == 4
+    assert metadata['name'] == 'moonrider.zip'
+    assert metadata['items'] == ['Moonrider.sh', 'moonrider']
+    assert metadata['items_opt'] is None
+    assert metadata['attr']['runtime'] == []
+    assert metadata['attr']['reqs'] == []
+    assert metadata['attr']['arch'] == ['aarch64']
     for name in ('Moonrider.sh', 'moonrider/runtime/run-moonrider.sh'):
         mode = (zf.getinfo(name).external_attr >> 16) & 0o777
         assert mode == 0o755, f'{name}: expected 0755, got {mode:04o}'
@@ -63,6 +86,18 @@ fi
 grep -q '  moonrider/patches/muos_audio_ghost.js$' "$OUT.manifest.sha256"
 if grep -q '  moonrider/game/' "$OUT.manifest.sha256"; then
   echo 'game payload leaked into per-file manifest' >&2
+  exit 1
+fi
+
+# Commercial payloads are forbidden anywhere outside the excluded game/ tree.
+LEAK_STAGE="$TMP/leak-stage"
+cp -a "$STAGE" "$LEAK_STAGE"
+printf 'commercial payload\n' > "$LEAK_STAGE/moonrider/runtime/data.js"
+python3 "$ROOT/scripts/generate-runtime-manifest.py" \
+  "$LEAK_STAGE/moonrider/runtime" >/dev/null
+if STAGING="$LEAK_STAGE" MOONRIDER_OUT="$TMP/leak.zip" \
+  bash "$ROOT/scripts/make-portmaster-zip.sh" >/dev/null 2>&1; then
+  echo 'packager accepted commercial payload outside game/' >&2
   exit 1
 fi
 

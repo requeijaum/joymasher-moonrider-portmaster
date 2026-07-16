@@ -23,7 +23,8 @@ source "$controlfolder/control.txt"
 [ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
 get_controls
 
-GAMEDIR="/$directory/ports/moonrider"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+GAMEDIR="$SCRIPT_DIR/moonrider"
 
 # --- Single-instance lock ------------------------------------------------------
 LOCKFILE="/run/moonrider.lock"

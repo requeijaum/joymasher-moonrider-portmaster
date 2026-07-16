@@ -45,7 +45,7 @@ The WPE launcher injects the maintained gamepad and Audio Ghost patches from
 - `moonrider/patches/` — runtime-injected gamepad and Audio Ghost V12 patches
 - `runtime-config/` — WPE runtime environment
 - `runtime-fixes/` — EGL-forcing GLX stub
-- `scripts/apply-port-layer.py` — injects the patches into BYO assets
+- `scripts/extract-assets.sh` — copies a complete game export without modifying it
 - `scripts/make-portmaster-zip.sh` — builds the asset-free installable ZIP
 
 ## Build from an approved staging tree
@@ -57,16 +57,31 @@ Moonrider.sh
 moonrider/port.json
 moonrider/gameinfo.xml
 moonrider/runtime/
+  RUNTIME-PROVENANCE.md
+  RUNTIME-MANIFEST.sha256
+  LICENSES/
 moonrider/patches/
 moonrider/ASSETS-HERE.txt
 ```
 
-Then run:
+After the runtime tree, provenance and license payload are final, generate its
+complete inventory and build the ZIP:
 
 ```bash
+python3 scripts/generate-runtime-manifest.py \
+  /path/to/staging/moonrider/runtime
 STAGING=/path/to/staging \
 MOONRIDER_OUT=/tmp/moonrider.zip \
   scripts/make-portmaster-zip.sh
+```
+
+Host prerequisites: Bash, Python 3, `file`, `unzip` and GNU coreutils.
+The builder refuses to overwrite existing output and emits:
+
+```text
+moonrider.zip
+moonrider.zip.sha256
+moonrider.zip.manifest.sha256
 ```
 
 To prepare your own game directory without modifying the originals:

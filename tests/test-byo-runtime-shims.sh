@@ -27,4 +27,11 @@ if grep -q '^export MUOS_DEBUG=1$' "$ROOT/runtime-config/run-moonrider.sh"; then
   exit 1
 fi
 
+grep -q 'SCRIPT_DIR=.*BASH_SOURCE' "$ROOT/Moonrider.sh"
+grep -q 'GAMEDIR="\$SCRIPT_DIR/moonrider"' "$ROOT/Moonrider.sh"
+if grep -q 'GAMEDIR="/\$directory/' "$ROOT/Moonrider.sh"; then
+  echo 'launcher must not hardcode the active ports volume' >&2
+  exit 1
+fi
+
 printf 'test-byo-runtime-shims: OK\n'

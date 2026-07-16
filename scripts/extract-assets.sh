@@ -1,68 +1,46 @@
 #!/bin/bash
-# Extract the Construct 2 / HTML5 game assets from a legitimate copy of
-# Vengeful Guardian: Moonrider into moonrider/game/.
-#
-# Usage: scripts/extract-assets.sh /path/to/game/assets
-#
-# The "game assets folder" is the one containing c2runtime.js, data.js, media/,
-# images/, the *.csv files and the intro video. Nothing here is redistributed —
-# assets stay under moonrider/game/ which is gitignored.
-
+# Copy a legitimate Construct 2 desktop export into a new staging directory.
+# The export remains unchanged; moonrider-launch injects the compatibility layer.
 set -euo pipefail
 
 SRC="${1:-}"
-if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
+if [[ -z "$SRC" || ! -d "$SRC" ]]; then
   echo "Usage: $0 /path/to/game/assets" >&2
   exit 1
 fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
-# Destination is overridable so a build can stage assets OFF the SSD (e.g. in
-# /tmp tmpfs) instead of writing into the repo's moonrider/game/.
-#   MOONRIDER_GAME_DEST=/tmp/... scripts/extract-assets.sh <src>
 DEST="${MOONRIDER_GAME_DEST:-$ROOT/moonrider/game}"
-
-# MOONRIDER_LINK=1 symlinks the whole asset tree instead of copying it — zero
-# bytes written to disk beyond the link. Packaging must traverse with `find -L`.
-LINK="${MOONRIDER_LINK:-0}"
-
 SRC_ABS="$(cd "$SRC" && pwd)"
 
-if [ "$LINK" = "1" ]; then
-  mkdir -p "$(dirname "$DEST")"
-  rm -rf "$DEST"
-  ln -s "$SRC_ABS" "$DEST"
-  echo "Linked raw game assets (no copy):"
-  echo "  $DEST -> $SRC_ABS"
-  echo "WARNING: symlink mode does NOT modify original assets and therefore does"
-  echo "not apply the required muOS shims. Use copy/staging mode for a playable build."
-  exit 0
-fi
+[[ ! -e "$DEST" ]] || {
+  echo "Refusing to merge with an existing destination: $DEST" >&2
+  exit 2
+}
 
-mkdir -p "$DEST"
-echo "Copying game assets:"
-echo "  from: $SRC_ABS"
-echo "  to:   $DEST"
-
-# Core C2 runtime + data + asset folders
-for item in c2runtime.js data.js index.html images media; do
-  if [ -e "$SRC_ABS/$item" ]; then
-    cp -a "$SRC_ABS/$item" "$DEST/"
-    echo "  + $item"
-  else
-    echo "  ! missing: $item" >&2
+missing=0
+for item in index.html c2runtime.js data.js images media; do
+  if [[ ! -e "$SRC_ABS/$item" ]]; then
+    echo "Missing required game export item: $item" >&2
+    missing=1
   fi
 done
+compgen -G "$SRC_ABS/*.csv" >/dev/null || {
+  echo "Missing required CSV files" >&2
+  missing=1
+}
+compgen -G "$SRC_ABS/*.mp4" >/dev/null || {
+  echo "Missing required intro MP4" >&2
+  missing=1
+}
+(( missing == 0 )) || exit 2
 
-# CSV localization / config files
-cp -a "$SRC_ABS"/*.csv "$DEST/" 2>/dev/null && echo "  + *.csv" || true
+mkdir -p "$DEST"
+for item in index.html c2runtime.js data.js images media; do
+  cp -a "$SRC_ABS/$item" "$DEST/"
+done
+cp -a "$SRC_ABS"/*.csv "$DEST/"
+cp -a "$SRC_ABS"/*.mp4 "$DEST/"
 
-# Intro video (mandatory — engine waits on it before the menu / audio unlock)
-cp -a "$SRC_ABS"/*.mp4 "$DEST/" 2>/dev/null && echo "  + *.mp4" || true
-
-# Apply the versioned, deterministic muOS/WPE compatibility layer. This copies
-# the gamepad + PLAYPAIR audio shims and injects them before c2runtime.js.
-python3 "$ROOT/scripts/apply-port-layer.py" "$DEST"
-
-echo "Done. Playable-layer contract applied."
+printf 'Copied unchanged game export:\n  from: %s\n  to:   %s\n' "$SRC_ABS" "$DEST"
+printf 'The WPE launcher will inject moonrider/patches at document start.\n'

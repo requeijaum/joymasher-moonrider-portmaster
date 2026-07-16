@@ -14,7 +14,6 @@ WPE WebKit, with native framebuffer video, gamepad input and audio.
 - A legitimate desktop copy from
   [Steam](https://store.steampowered.com/app/1942010/Vengeful_Guardian_Moonrider/)
   or [GOG](https://www.gog.com/en/game/vengeful_guardian_moonrider).
-- The desktop/Electron game export. Android assets are not compatible.
 
 No game assets are included in this repository or in the port package.
 

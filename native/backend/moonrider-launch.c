@@ -254,6 +254,31 @@ static char* file_uri_base(const char *uri) {
     return g_strndup(uri, slash - uri + 1);
 }
 
+static gboolean add_user_script_file(WebKitUserContentManager *ucm,
+                                     const char *path) {
+    gchar *source = NULL;
+    gsize length = 0;
+    GError *error = NULL;
+    if (!g_file_get_contents(path, &source, &length, &error)) {
+        fprintf(stderr, "[launch] ERRO: shim ausente/ilegível %s: %s\n",
+                path, error ? error->message : "?");
+        if (error) g_error_free(error);
+        return FALSE;
+    }
+    WebKitUserScript *script = webkit_user_script_new(
+        source,
+        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+        NULL,
+        NULL);
+    webkit_user_content_manager_add_script(ucm, script);
+    webkit_user_script_unref(script);
+    fprintf(stderr, "[launch] shim document-start carregado: %s (%zu bytes)\n",
+            path, (size_t)length);
+    g_free(source);
+    return TRUE;
+}
+
 int main(int argc, char *argv[]) {
     const char *url = (argc > 1) ? argv[1] : "file:///mnt/mmc/wpe-test/smoke.html";
     fprintf(stderr, "[launch] iniciando; url=%s\n", url);
@@ -284,6 +309,22 @@ int main(int argc, char *argv[]) {
     webkit_user_content_manager_register_script_message_handler(ucm, "muosExit");
     g_signal_connect(ucm, "script-message-received::muosExit",
                      G_CALLBACK(on_exit_message), NULL);
+
+    /* The BYO package receives raw game assets only after installation. Inject
+     * the maintained layer from the port itself instead of requiring Python or
+     * rewriting the user's index.html on the handheld. */
+    const char *shim_dir = getenv("MOONRIDER_SHIM_DIR");
+    if (!shim_dir || !*shim_dir) {
+        fprintf(stderr, "[launch] ERRO: MOONRIDER_SHIM_DIR não definido\n");
+        return 3;
+    }
+    char *gamepad_shim = g_build_filename(shim_dir, "muos_gamepad_shim.js", NULL);
+    char *audio_shim = g_build_filename(shim_dir, "muos_audio_ghost.js", NULL);
+    gboolean shims_ok = add_user_script_file(ucm, audio_shim) &&
+                        add_user_script_file(ucm, gamepad_shim);
+    g_free(gamepad_shim);
+    g_free(audio_shim);
+    if (!shims_ok) return 3;
 
     /* cria a web view COM o backend e o user content manager */
     WebKitWebView *view = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,

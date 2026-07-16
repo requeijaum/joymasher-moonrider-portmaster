@@ -42,8 +42,16 @@ export WPE_BACKEND_LIBRARY="$HERE/lib/libWPEBackend-mali-fbdev.so"
 export WEBKIT_EXEC_PATH="$HERE/lib/wpe-webkit-1.1"
 export WEBKIT_INJECTED_BUNDLE_PATH="$HERE/lib/wpe-webkit-1.1/injected-bundle"
 
-# Diagnostics while stabilizing; set to 0/empty in final release if log overhead matters.
-export MUOS_DEBUG=1
+# Compatibility layer shipped with the port. moonrider-launch injects both
+# scripts at document-start, so users can copy an untouched desktop export into
+# game/ after installing the BYO ZIP; no Python or HTML rewriting is needed.
+export MOONRIDER_SHIM_DIR="$HERE/../patches"
+
+# Console JS is off in normal releases. An explicit MUOS_DEBUG=1 inherited from
+# the caller enables it; values such as 0 must not count as enabled in C.
+if [ "${MUOS_DEBUG:-0}" != "1" ]; then
+  unset MUOS_DEBUG
+fi
 
 # WebKit sandbox off (kernel 4.9 BSP without suitable namespaces).
 export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1

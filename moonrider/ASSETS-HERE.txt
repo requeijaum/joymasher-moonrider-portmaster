@@ -1,10 +1,13 @@
 COPY YOUR LEGITIMATE DESKTOP GAME EXPORT HERE
 
-On the handheld, create:
+On the handheld, create game/ BESIDE this file:
 
-  /roms/ports/moonrider/game/
+  <active-card>/ports/moonrider/ASSETS-HERE.txt
+  <active-card>/ports/moonrider/game/
 
-Copy the CONTENTS of the Steam/GOG desktop Electron export into that directory.
+Copy the UNCHANGED CONTENTS of the Steam/GOG desktop Electron export there.
+The launcher injects audio/gamepad patches from ../patches/ at runtime. Do not
+edit index.html and do not copy those patches into game/.
 The result must include:
 
   game/index.html

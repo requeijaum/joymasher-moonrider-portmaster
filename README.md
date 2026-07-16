@@ -11,36 +11,38 @@ No game assets are included. You must own the Steam or GOG version.
 
 ## Install
 
-An installable release must be named `Moonrider-PortMaster-BYO.zip`. The current
+An installable release must be named `moonrider.zip`. The current
 `v0.1.0-alpha.2` release is source-only; do not mistake it for an installable port.
 A playable ZIP will be published only when the bundled WPE runtime can be legally
 redistributed with its licenses and source provenance.
 
 When an installable ZIP is available:
 
-1. Extract it into `/roms/ports/` or install it through PortMaster.
-2. Create `/roms/ports/moonrider/game/`.
-3. Copy the **contents** of the desktop/Electron game export into that directory.
+1. Install `moonrider.zip` through PortMaster.
+2. Open the installed `ports/moonrider/` data folder on the active card (the one
+   containing `ASSETS-HERE.txt`) and create `game/` beside that marker.
+3. Copy the **unchanged contents** of the desktop/Electron game export into `game/`.
 4. Confirm these paths exist:
 
 ```text
-/roms/ports/Moonrider.sh
-/roms/ports/moonrider/game/index.html
-/roms/ports/moonrider/game/c2runtime.js
-/roms/ports/moonrider/game/data.js
-/roms/ports/moonrider/game/images/
-/roms/ports/moonrider/game/media/
+<active-card>/ports/moonrider/game/index.html
+<active-card>/ports/moonrider/game/c2runtime.js
+<active-card>/ports/moonrider/game/data.js
+<active-card>/ports/moonrider/game/images/
+<active-card>/ports/moonrider/game/media/
 ```
 
 The intro `.mp4` from the legitimate desktop export is required. Launch
 **Moonrider** from the Ports menu. Use **L2 + R1 twice within two seconds** to quit.
+The WPE launcher injects the maintained gamepad and Audio Ghost patches from
+`moonrider/patches/` at document start; do not edit `game/index.html`.
 
 ## Port code
 
 - `Moonrider.sh` — PortMaster/muOS launcher and frontend lifecycle
 - `native/backend/` — WPE framebuffer backend, launcher and evdev input
 - `native/audio-mixer/` — miniaudio/libvorbis mixer
-- `shims/` — Construct 2 gamepad and Audio Ghost V12 patches
+- `moonrider/patches/` — runtime-injected gamepad and Audio Ghost V12 patches
 - `runtime-config/` — WPE runtime environment
 - `runtime-fixes/` — EGL-forcing GLX stub
 - `scripts/apply-port-layer.py` — injects the patches into BYO assets
@@ -52,8 +54,10 @@ The staging tree must already contain the approved aarch64 WPE runtime:
 
 ```text
 Moonrider.sh
-port.json
+moonrider/port.json
+moonrider/gameinfo.xml
 moonrider/runtime/
+moonrider/patches/
 moonrider/ASSETS-HERE.txt
 ```
 
@@ -61,7 +65,7 @@ Then run:
 
 ```bash
 STAGING=/path/to/staging \
-MOONRIDER_OUT=/tmp/Moonrider-PortMaster-BYO.zip \
+MOONRIDER_OUT=/tmp/moonrider.zip \
   scripts/make-portmaster-zip.sh
 ```
 

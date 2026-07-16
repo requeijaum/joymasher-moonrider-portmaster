@@ -24,7 +24,9 @@ jobs:
           node tests/test-audio-ghost.js
           bash scripts/verify-playable-contract.sh
       - name: Test installable ZIP layout
-        run: bash tests/test-package.sh
+        run: |
+          KEEP_TEST_TMP=1 bash tests/test-package.sh
+          bash tests/test-byo-runtime-shims.sh
       - name: Reject game assets and secrets
         run: |
           if git ls-files | grep -Ei '\.(ogg|mp3|wav|flac|m4a|aac|mp4|webm|png|jpe?g|webp|asar|exe)$'; then

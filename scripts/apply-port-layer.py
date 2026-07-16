@@ -29,7 +29,7 @@ def main() -> int:
     game = args.game_dir.resolve()
     index = game / "index.html"
     runtime = game / "c2runtime.js"
-    source_shims = root / "shims"
+    source_shims = root / "moonrider" / "patches"
 
     if not index.is_file() or not runtime.is_file():
         fail(f"game_dir precisa conter index.html e c2runtime.js: {game}")

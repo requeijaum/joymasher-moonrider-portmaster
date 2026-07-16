@@ -13,8 +13,8 @@ for f in \
   "$ROOT/runtime-fixes/libGL.so.1" \
   "$ROOT/native/backend/moonrider-launch.c" \
   "$ROOT/native/audio-mixer/muos_audio_mixer.c" \
-  "$ROOT/shims/muos_audio_ghost.js" \
-  "$ROOT/shims/muos_gamepad_shim.js" \
+  "$ROOT/moonrider/patches/muos_audio_ghost.js" \
+  "$ROOT/moonrider/patches/muos_gamepad_shim.js" \
   "$ROOT/runtime-config/run-moonrider.sh"; do
   [[ -f "$f" ]] || fail "required source absent: ${f#$ROOT/}"
 done
@@ -34,8 +34,8 @@ PY
 
 grep -q 'strcmp(cmd, "PLAYPAIR")' "$ROOT/native/backend/moonrider-launch.c" || fail "launcher source lacks PLAYPAIR parser"
 grep -q 'muos_mixer_play_pair' "$ROOT/native/audio-mixer/muos_audio_mixer.c" || fail "mixer source lacks PLAYPAIR scheduler"
-grep -q 'PLAYPAIR|' "$ROOT/shims/muos_audio_ghost.js" || fail "ghost lacks PLAYPAIR emitter"
-grep -q 'AP.cnds.IsTagPlaying = function' "$ROOT/shims/muos_audio_ghost.js" || fail "ghost lacks native IsTagPlaying bridge"
+grep -q 'PLAYPAIR|' "$ROOT/moonrider/patches/muos_audio_ghost.js" || fail "ghost lacks PLAYPAIR emitter"
+grep -q 'AP.cnds.IsTagPlaying = function' "$ROOT/moonrider/patches/muos_audio_ghost.js" || fail "ghost lacks native IsTagPlaying bridge"
 node "$ROOT/tests/test-audio-ghost.js" >/dev/null || fail "audio ghost behavior test failed"
 ok "coupled PLAYPAIR trio and native IsTagPlaying bridge present"
 
@@ -83,34 +83,29 @@ ok "game-layer injection is ordered and idempotent"
 if [[ -n "$PORT_ROOT" ]]; then
   R="$PORT_ROOT/runtime"
   G="$PORT_ROOT/game"
+  P="$PORT_ROOT/patches"
   [[ -f "$R/libs/libGL.so.1" ]] || fail "staging runtime lacks libs/libGL.so.1"
   [[ -f "$R/bin/moonrider-launch" ]] || fail "staging runtime lacks launcher"
   grep -qa PLAYPAIR "$R/bin/moonrider-launch" || fail "staging launcher lacks PLAYPAIR"
-  [[ -f "$G/muos_audio_ghost.js" ]] || fail "staging game lacks audio ghost"
-  grep -q 'PLAYPAIR|' "$G/muos_audio_ghost.js" || fail "staging ghost lacks PLAYPAIR"
+  grep -qa MOONRIDER_SHIM_DIR "$R/bin/moonrider-launch" || fail "staging launcher lacks runtime shim injection"
+  [[ -f "$P/muos_audio_ghost.js" ]] || fail "staging port lacks audio ghost"
+  [[ -f "$P/muos_gamepad_shim.js" ]] || fail "staging port lacks gamepad shim"
+  grep -q 'PLAYPAIR|' "$P/muos_audio_ghost.js" || fail "staging ghost lacks PLAYPAIR"
   python3 - "$ROOT" "$PORT_ROOT" <<'PY'
 from pathlib import Path
 import hashlib, json, sys
 root, port = map(Path, sys.argv[1:])
 manifest = json.loads((root / "manifests/PLAYABLE-V2.json").read_text())
-index = (port / "game/index.html").read_text(errors="replace")
-for script in ("muos_gamepad_shim.js", "muos_audio_ghost.js", "c2runtime.js"):
-    if script not in index:
-        raise SystemExit(f"FAIL: staging index lacks {script}")
-if not index.index("muos_gamepad_shim.js") < index.index("muos_audio_ghost.js") < index.index("c2runtime.js"):
-    raise SystemExit("FAIL: game shim order is wrong")
 for rel, expected in manifest["game_core_md5"].items():
     actual = hashlib.md5((port / "game" / rel).read_bytes()).hexdigest()
     if actual != expected:
         raise SystemExit(f"FAIL: wrong game export: {rel}: {actual} != {expected}")
-for rel, expected in manifest["artifacts_md5"].items():
-    path = port / rel
-    if not path.is_file():
-        raise SystemExit(f"FAIL: manifested artifact absent: {rel}")
-    actual = hashlib.md5(path.read_bytes()).hexdigest()
-    if actual != expected:
-        raise SystemExit(f"FAIL: artifact hash drift: {rel}: {actual} != {expected}")
-print("OK: assembled artifact hashes match PLAYABLE-V2 manifest")
+for name in ("muos_audio_ghost.js", "muos_gamepad_shim.js"):
+    src = root / "moonrider/patches" / name
+    packaged = port / "patches" / name
+    if hashlib.sha256(src.read_bytes()).digest() != hashlib.sha256(packaged.read_bytes()).digest():
+        raise SystemExit(f"FAIL: packaged patch drift: {name}")
+print("OK: BYO staging uses the tested game export and canonical port patches")
 PY
   ok "assembled staging satisfies PLAYABLE-V2"
 fi

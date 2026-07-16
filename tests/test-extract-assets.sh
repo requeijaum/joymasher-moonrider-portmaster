@@ -5,7 +5,7 @@ TMP=$(mktemp -d /tmp/moonrider-extract-test.XXXXXX)
 echo "preserving extraction test: $TMP"
 SRC="$TMP/source"
 DEST="$TMP/game"
-mkdir -p "$SRC/images" "$SRC/media"
+mkdir -p "$SRC/images" "$SRC/media" "$SRC/extra"
 printf '<script src="c2runtime.js"></script>\n' > "$SRC/index.html"
 printf 'runtime\n' > "$SRC/c2runtime.js"
 printf 'data\n' > "$SRC/data.js"
@@ -13,9 +13,13 @@ printf 'image\n' > "$SRC/images/a.png"
 printf 'audio\n' > "$SRC/media/a.ogg"
 printf 'csv\n' > "$SRC/en.csv"
 printf 'video\n' > "$SRC/intro.mp4"
+printf 'jquery\n' > "$SRC/jquery-3.4.1.min.js"
+printf 'manifest\n' > "$SRC/appmanifest.json"
+printf 'keep nested files\n' > "$SRC/extra/required.dat"
 
 MOONRIDER_GAME_DEST="$DEST" bash "$ROOT/scripts/extract-assets.sh" "$SRC" >/dev/null
-for rel in index.html c2runtime.js data.js images/a.png media/a.ogg en.csv intro.mp4; do
+for rel in index.html c2runtime.js data.js images/a.png media/a.ogg en.csv intro.mp4 \
+  jquery-3.4.1.min.js appmanifest.json extra/required.dat; do
   cmp -s "$SRC/$rel" "$DEST/$rel" || {
     echo "extractor changed or omitted: $rel" >&2
     exit 1

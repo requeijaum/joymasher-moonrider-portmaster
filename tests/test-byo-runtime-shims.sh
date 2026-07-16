@@ -28,9 +28,46 @@ if grep -q '^export MUOS_DEBUG=1$' "$ROOT/runtime-config/run-moonrider.sh"; then
 fi
 
 grep -q 'SCRIPT_DIR=.*BASH_SOURCE' "$ROOT/Moonrider.sh"
-grep -q 'GAMEDIR="\$SCRIPT_DIR/moonrider"' "$ROOT/Moonrider.sh"
+grep -q 'CARD_ROOT=.*SCRIPT_DIR/../..' "$ROOT/Moonrider.sh"
+grep -q 'GAMEDIR="\$CARD_ROOT/ports/moonrider"' "$ROOT/Moonrider.sh"
+grep -q 'game/index.html' "$ROOT/Moonrider.sh"
+grep -q 'game assets missing' "$ROOT/Moonrider.sh"
+if grep -q 'GAMEDIR="\$SCRIPT_DIR/moonrider"' "$ROOT/Moonrider.sh"; then
+  echo 'launcher must resolve the data directory beside the card-root ports/, not ROMS/Ports/' >&2
+  exit 1
+fi
 if grep -q 'GAMEDIR="/\$directory/' "$ROOT/Moonrider.sh"; then
   echo 'launcher must not hardcode the active ports volume' >&2
+  exit 1
+fi
+
+# A WebKit/UIProcess deadlock must not hide the only useful log in /run. During
+# diagnostics a marker enables an external mirror and the wrapper owns the exact
+# child PID so TERM never degenerates into pkill/killall.
+grep -q 'LIVE_LOG_MARKER=' "$ROOT/Moonrider.sh"
+grep -q 'GAME_PID=\$!' "$ROOT/Moonrider.sh"
+grep -q 'LIVE_LOG_PID=\$!' "$ROOT/Moonrider.sh"
+grep -q 'kill -TERM "\$GAME_PID"' "$ROOT/Moonrider.sh"
+grep -q 'log-live.txt' "$ROOT/Moonrider.sh"
+grep -q 'mv -f "\$tmp" "\$PERSIST_LOG"' "$ROOT/Moonrider.sh"
+if grep -Eq 'pkill|killall|kill[[:space:]]+-KILL' "$ROOT/Moonrider.sh"; then
+  echo 'launcher diagnostics must use exact PIDs and TERM only' >&2
+  exit 1
+fi
+grep -Fq 'kill -TERM "$GAME_PID"' "$ROOT/Moonrider.sh"
+grep -Fq 'mv -f "$tmp" "$PERSIST_LOG"' "$ROOT/Moonrider.sh"
+
+# Diagnostic markers must produce a real engine-off A/B, not a mixer-volume mute.
+grep -Fq '.audio-disabled' "$ROOT/Moonrider.sh"
+grep -Fq 'export MOONRIDER_DISABLE_AUDIO=1' "$ROOT/Moonrider.sh"
+grep -Fq '.diagnostics-enabled' "$ROOT/Moonrider.sh"
+grep -Fq 'export MUOS_DIAGNOSTICS=1' "$ROOT/Moonrider.sh"
+grep -Fq 'export MUOS_FRAME_LOG=1' "$ROOT/Moonrider.sh"
+grep -Fq 'MOONRIDER_DISABLE_AUDIO' "$ROOT/native/backend/moonrider-launch.c"
+grep -Fq '[audio-ab] engine disabled' "$ROOT/native/backend/moonrider-launch.c"
+grep -Fq '[heartbeat] mainloop=' "$ROOT/native/backend/moonrider-launch.c"
+if grep -q 'muos_mixer_volume.*0' "$ROOT/native/backend/moonrider-launch.c"; then
+  echo 'audio A/B must disable the engine, not mute mixer volume' >&2
   exit 1
 fi
 

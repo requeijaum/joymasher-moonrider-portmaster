@@ -1,5 +1,5 @@
 /*
- * muos_gamepad_shim.js — v3 auditado (latch de release correto)
+ * muos_gamepad_shim.js — v4 latest-state (sem replay de backlog)
  * Injeta navigator.getGamepads() no WebView WPE para o Construct 2 (plugin Gamepad).
  *
  * MUDANÇA-CHAVE vs v1: o pad é reportado como CONECTADO desde o boot. NÃO há mais
@@ -45,56 +45,84 @@
   var pads = [ makePad(0), null, null, null ];
 
   var BTN_NAMES = ["A","B","X","Y","L1","R1","L2","R2","SELECT","START","L3","R3","UP","DOWN","LEFT","RIGHT","GUIDE"];
-  var prevBtn = new Array(NBTN); for (var _i=0;_i<NBTN;_i++) prevBtn[_i]=0;
+  var physicalBtn = new Array(NBTN); for (var _i=0;_i<NBTN;_i++) physicalBtn[_i]=0;
+  var pendingPress = new Array(NBTN); for (var _p=0;_p<NBTN;_p++) pendingPress[_p]=false;
+  var pendingOrder = [];
+  var syntheticRelease = false;
+  var lastSeq = 0;
 
-  // LATCH anti-borda-perdida: com tick do C2 irregular (~27fps) e push a 60Hz, o C2 pode
-  // ler getGamepads() DEPOIS de o botao ja ter voltado a 0 -> perde a borda OnButtonDown
-  // (sintoma: menu SAVEMANAGE nao fechava apesar de A ser apertado 63x). O latch segura
-  // pressed=true por ate LATCH_READS leituras do getGamepads apos o release fisico, garantindo
-  // que pelo menos 1 tick do C2 veja a transicao 0->1->0 completa.
-  var LATCH_READS = 2;
-  var latch = new Array(NBTN); for (var _l=0;_l<NBTN;_l++) latch[_l]=0;
+  function setButton(p, i, value) {
+    p.buttons[i].value = value;
+    p.buttons[i].pressed = value >= 0.5;
+  }
 
-  // getGamepads(): aplica o latch — se o botao fisico soltou mas ainda ha latch, mantem pressed.
+  // O estado físico atual sempre tem prioridade. Rising edges que ocorreram e
+  // foram coalescidas no C são apresentadas como pulsos one-shot, uma por leitura,
+  // somente quando o pad físico está neutro. A leitura seguinte é obrigatoriamente
+  // neutra, impedindo combinações sintéticas A+B e botões presos.
   function getGamepads() {
     var p = pads[0];
-    if (p) {
-      for (var i = 0; i < NBTN; i++) {
-        if (latch[i] > 0) {
-          latch[i]--;
-          p.buttons[i].pressed = true;
-          p.buttons[i].value = 1;
-        } else if (prevBtn[i] < 0.5) {
-          // O launcher só envia quando o evdev muda. Portanto o próprio polling
-          // precisa soltar o botão quando o latch expira; não haverá outro push.
-          p.buttons[i].pressed = false;
-          p.buttons[i].value = 0;
-        }
+    if (!p) return pads;
+    var i, anyPhysical = false;
+    for (i = 0; i < NBTN; i++) {
+      setButton(p, i, physicalBtn[i]);
+      if (physicalBtn[i] >= 0.5) anyPhysical = true;
+    }
+
+    // Uma edge cujo botão está fisicamente pressionado foi observada diretamente.
+    if (pendingOrder.length) {
+      var keep = [];
+      for (i = 0; i < pendingOrder.length; i++) {
+        var queued = pendingOrder[i];
+        if (physicalBtn[queued] >= 0.5) pendingPress[queued] = false;
+        else keep.push(queued);
       }
+      pendingOrder = keep;
+    }
+
+    if (anyPhysical) {
+      syntheticRelease = false;
+    } else if (syntheticRelease) {
+      syntheticRelease = false; // esta leitura neutra separa dois taps
+    } else if (pendingOrder.length) {
+      var button = pendingOrder.shift();
+      pendingPress[button] = false;
+      setButton(p, button, 1);
+      syntheticRelease = true;
+      if (DEBUG && window.console && console.log)
+        console.log("MUOS_SYNTH_PRESS", BTN_NAMES[button] || button);
     }
     return pads;
   }
   navigator.getGamepads = getGamepads;
   navigator.webkitGetGamepads = getGamepads;
 
-  // API nativa chamada pelo launcher C: btnState[17] 0..1, axState[4] -1..1.
-  window.__muos_pushGamepad = function (btnState, axState) {
+  // API nativa: estado físico mais recente + rising edges preservadas pelo
+  // mailbox C + sequência. Sequências antigas nunca podem regredir o pad.
+  window.__muos_pushGamepad = function (btnState, axState, pressEdges, seq) {
     var p = pads[0];
     if (!p) { p = pads[0] = makePad(0); }
     var i;
+    // Compatibilidade com o launcher V3: terceiro argumento era seq.
+    if (typeof pressEdges === "number" && typeof seq === "undefined") {
+      seq = pressEdges;
+      pressEdges = null;
+    }
+    seq = +seq;
+    if (!(seq > 0)) seq = lastSeq + 1;
+    if (seq <= lastSeq) return;
+    if (DEBUG && lastSeq > 0 && seq > lastSeq + 1 && window.console && console.log)
+      console.log("MUOS_PAD_COALESCED", lastSeq, seq);
+    lastSeq = seq;
+
     for (i = 0; i < NBTN; i++) {
       var v = (btnState && i < btnState.length) ? +btnState[i] : 0;
-      if (v >= 0.5 && prevBtn[i] < 0.5) {
-        if (DEBUG && window.console && console.log) console.log("MUOS_BTN_DOWN", BTN_NAMES[i] || i);
-      } else if (v < 0.5 && prevBtn[i] >= 0.5) {
-        // Armar na borda de RELEASE. Armar no press consumia todo o latch enquanto
-        // o botão ainda estava fisicamente pressionado e perdia a borda depois.
-        latch[i] = LATCH_READS;
+      physicalBtn[i] = v;
+      setButton(p, i, v);
+      if (pressEdges && pressEdges[i] && !pendingPress[i]) {
+        pendingPress[i] = true;
+        pendingOrder.push(i);
       }
-      prevBtn[i] = v;
-      // se fisicamente pressed, reflete direto; se soltou, o latch (no getGamepads) segura.
-      if (v >= 0.5) { p.buttons[i].value = v; p.buttons[i].pressed = true; }
-      else if (latch[i] <= 0) { p.buttons[i].value = 0; p.buttons[i].pressed = false; }
     }
     for (i = 0; i < NAXES; i++) {
       p.axes[i] = (axState && i < axState.length) ? +axState[i] : 0;
@@ -109,5 +137,5 @@
     window.dispatchEvent(ev);
   } catch (e) { /* Event.gamepad pode ser read-only; C2 tb faz polling via getGamepads */ }
 
-  if (window.console && console.log) console.log("MUOS_GAMEPAD_SHIM_INSTALLED_V3");
+  if (window.console && console.log) console.log("MUOS_GAMEPAD_SHIM_INSTALLED_V4_LATEST_STATE");
 })();

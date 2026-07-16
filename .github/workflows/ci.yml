@@ -22,6 +22,12 @@ jobs:
       - name: Test port patches
         run: |
           node tests/test-audio-ghost.js
+          node tests/test-gamepad-latest-state.js
+          bash tests/test-audio-command-queue.sh
+          bash tests/test-audio-worker.sh
+          bash tests/test-audio-service-contract.sh
+          bash tests/test-audio-lifecycle-contract.sh
+          bash tests/test-input-mailbox.sh
           bash scripts/verify-playable-contract.sh
       - name: Test BYO package structure with synthetic runtime
         run: |

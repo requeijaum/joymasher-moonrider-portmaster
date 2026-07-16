@@ -15,7 +15,10 @@
 #include <signal.h>
 #include "evdev_gamepad.h"
 #include "exit_combo.h"
+#include "input_mailbox.h"
 #include "muos_audio_mixer.h"
+
+static gboolean audio_engine_enabled = TRUE;
 
 /* Handler das mensagens de audio vindas do shim JS (window.webkit.messageHandlers.muosAudio).
  * Formato pipe-delimitado (simples, sem JSON parser em C):
@@ -37,6 +40,16 @@ static void on_audio_message(WebKitUserContentManager *ucm,
     char *save = NULL;
     char *cmd = strtok_r(msg, "|", &save);
     if (!cmd) { g_free(msg); return; }
+
+    if (!audio_engine_enabled) {
+        static guint64 dropped = 0;
+        ++dropped;
+        if (dropped <= 8 || (dropped % 100) == 0)
+            fprintf(stderr, "[audio-ab] dropped cmd=%s total=%llu\n",
+                    cmd, (unsigned long long)dropped);
+        g_free(msg);
+        return;
+    }
 
     if (strcmp(cmd, "PLAY") == 0) {
         char *sid  = strtok_r(NULL, "|", &save);
@@ -96,8 +109,105 @@ static void on_exit_message(WebKitUserContentManager *ucm,
     if (g_loop) g_main_loop_quit(g_loop);
 }
 
-/* Empurra o estado do gamepad (thread evdev) para o WebView via shim JS.
- * Chamado no GMainLoop (~60 Hz). So injeta quando ha mudanca. */
+/* Latest-state mailbox: never queue an unbounded history of run_javascript()
+ * calls. One snapshot may be in flight and one newer snapshot may be pending;
+ * further evdev changes overwrite the pending slot. */
+static muos_input_mailbox gamepad_mailbox;
+static uint64_t gamepad_coalesced_total = 0;
+
+static gboolean diagnostics_heartbeat(gpointer data) {
+    (void)data;
+    static guint64 heartbeat = 0;
+    muos_audio_worker_stats audio = {0};
+    guint64 worker_age_ms = 0;
+    if (audio_engine_enabled) {
+        muos_mixer_get_stats(&audio);
+        if (audio.heartbeat_ns) {
+            guint64 now_ns = (guint64)g_get_monotonic_time() * 1000U;
+            if (now_ns > audio.heartbeat_ns)
+                worker_age_ms = (now_ns - audio.heartbeat_ns) / 1000000U;
+        }
+    }
+    fprintf(stderr,
+            "[heartbeat] mainloop=%llu coalesced=%llu audio_engine=%s "
+            "worker_state=%d op=%d age_ms=%llu q=%zu hwm=%zu processed=%llu "
+            "audio_coalesced=%llu dropped=%llu breaker=%d stalls=%llu\n",
+            (unsigned long long)++heartbeat,
+            (unsigned long long)gamepad_coalesced_total,
+            audio_engine_enabled ? "on" : "off",
+            (int)audio.state, audio.current_operation,
+            (unsigned long long)worker_age_ms,
+            audio.queue_depth, audio.queue_high_watermark,
+            (unsigned long long)audio.processed,
+            (unsigned long long)audio.coalesced,
+            (unsigned long long)audio.dropped,
+            audio.breaker_open,
+            (unsigned long long)audio.stall_events);
+    return G_SOURCE_CONTINUE;
+}
+
+typedef struct {
+    muos_input_snapshot snapshot;
+    gint64 queued_us;
+} gamepad_js_trace;
+
+static void gamepad_send_latest(WebKitWebView *view);
+
+static void gamepad_js_done(GObject *src, GAsyncResult *res, gpointer data) {
+    gamepad_js_trace *trace = (gamepad_js_trace *)data;
+    GError *err = NULL;
+    WebKitJavascriptResult *result = webkit_web_view_run_javascript_finish(
+        WEBKIT_WEB_VIEW(src), res, &err);
+    gint64 latency_us = g_get_monotonic_time() - trace->queued_us;
+
+    if (err || latency_us >= 100000) {
+        fprintf(stderr,
+                "[pad-latest] ACK seq=%llu latency_us=%lld status=%s coalesced=%llu%s%s\n",
+                (unsigned long long)trace->snapshot.seq,
+                (long long)latency_us,
+                result ? "ok" : "error",
+                (unsigned long long)gamepad_coalesced_total,
+                err ? " message=" : "", err ? err->message : "");
+    }
+    if (result) webkit_javascript_result_unref(result);
+    if (err) g_error_free(err);
+    muos_input_mailbox_complete(&gamepad_mailbox, &trace->snapshot, result != NULL);
+    g_free(trace);
+    gamepad_send_latest(WEBKIT_WEB_VIEW(src));
+}
+
+static void gamepad_send_latest(WebKitWebView *view) {
+    muos_input_snapshot snapshot;
+    if (!muos_input_mailbox_begin_send(&gamepad_mailbox, &snapshot)) return;
+
+    char js[640];
+    snprintf(js, sizeof(js),
+        "if(window.__muos_pushGamepad)__muos_pushGamepad("
+        "[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f],"
+        "[%.3f,%.3f,%.3f,%.3f],"
+        "[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d],%llu);",
+        snapshot.buttons[0],snapshot.buttons[1],snapshot.buttons[2],snapshot.buttons[3],
+        snapshot.buttons[4],snapshot.buttons[5],snapshot.buttons[6],snapshot.buttons[7],
+        snapshot.buttons[8],snapshot.buttons[9],snapshot.buttons[10],snapshot.buttons[11],
+        snapshot.buttons[12],snapshot.buttons[13],snapshot.buttons[14],snapshot.buttons[15],
+        snapshot.buttons[16], snapshot.axes[0],snapshot.axes[1],snapshot.axes[2],
+        snapshot.axes[3],
+        snapshot.press_edges[0],snapshot.press_edges[1],snapshot.press_edges[2],
+        snapshot.press_edges[3],snapshot.press_edges[4],snapshot.press_edges[5],
+        snapshot.press_edges[6],snapshot.press_edges[7],snapshot.press_edges[8],
+        snapshot.press_edges[9],snapshot.press_edges[10],snapshot.press_edges[11],
+        snapshot.press_edges[12],snapshot.press_edges[13],snapshot.press_edges[14],
+        snapshot.press_edges[15],snapshot.press_edges[16],
+        (unsigned long long)snapshot.seq);
+
+    gamepad_js_trace *trace = g_new(gamepad_js_trace, 1);
+    trace->snapshot = snapshot;
+    trace->queued_us = g_get_monotonic_time();
+    webkit_web_view_run_javascript(view, js, NULL, gamepad_js_done, trace);
+}
+
+/* Samples the physical state on the UIProcess main loop. Exit remains native
+ * and therefore independent from WebProcess congestion. */
 static gboolean gamepad_pulse(gpointer data) {
     WebKitWebView *view = WEBKIT_WEB_VIEW(data);
     float btn[MUOS_NBTN], ax[MUOS_NAXES];
@@ -118,15 +228,10 @@ static gboolean gamepad_pulse(gpointer data) {
         }
     }
     if (dirty) {
-        char js[512];
-        snprintf(js, sizeof(js),
-            "if(window.__muos_pushGamepad)__muos_pushGamepad("
-            "[%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f],"
-            "[%.3f,%.3f,%.3f,%.3f]);",
-            btn[0],btn[1],btn[2],btn[3],btn[4],btn[5],btn[6],btn[7],btn[8],
-            btn[9],btn[10],btn[11],btn[12],btn[13],btn[14],btn[15],btn[16],
-            ax[0],ax[1],ax[2],ax[3]);
-        webkit_web_view_run_javascript(view, js, NULL, NULL, NULL);
+        if (gamepad_mailbox.in_flight && gamepad_mailbox.pending)
+            gamepad_coalesced_total++;
+        muos_input_mailbox_update(&gamepad_mailbox, btn, ax);
+        gamepad_send_latest(view);
     }
     return G_SOURCE_CONTINUE;
 }
@@ -281,6 +386,7 @@ static gboolean add_user_script_file(WebKitUserContentManager *ucm,
 
 int main(int argc, char *argv[]) {
     const char *url = (argc > 1) ? argv[1] : "file:///mnt/mmc/wpe-test/smoke.html";
+    audio_engine_enabled = getenv("MOONRIDER_DISABLE_AUDIO") == NULL;
     fprintf(stderr, "[launch] iniciando; url=%s\n", url);
     fprintf(stderr, "[launch] WPE_BACKEND=%s\n", getenv("WPE_BACKEND") ? getenv("WPE_BACKEND") : "(nao setado!)");
 
@@ -333,11 +439,16 @@ int main(int argc, char *argv[]) {
         NULL));
     fprintf(stderr, "[launch] WebKitWebView criada OK (com muosAudio handler)\n");
 
-    /* inicia o mixer nativo (ma_engine + libvorbis -> ALSA/default->pipewire) */
-    if (muos_mixer_init() != 0)
+    /* A/B real: não inicializa miniaudio, libvorbis, ALSA/PipeWire nem reap timer.
+     * O Audio Ghost continua oferecendo a API esperada pelo Construct, mas suas
+     * mensagens são descartadas no começo de on_audio_message(). */
+    if (!audio_engine_enabled) {
+        fprintf(stderr, "[audio-ab] engine disabled; mixer init/reap/play bypassed\n");
+    } else if (muos_mixer_init() != 0) {
         fprintf(stderr, "[launch] AVISO: mixer de audio nao iniciou (jogo seguira mudo)\n");
-    else
+    } else {
         g_timeout_add(1000, audio_reap_tick, NULL); /* libera slots de SFX terminados */
+    }
 
     /* settings: habilitar WebGL, aceleração, permitir file:// acessar recursos */
     WebKitSettings *s = webkit_web_view_get_settings(view);
@@ -380,8 +491,11 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "[launch] load chamado; entrando no main loop\n");
 
     /* 60 Hz acompanha o tick-alvo; 120 Hz só duplicava wakeups/mutex sem criar frames. */
+    muos_input_mailbox_init(&gamepad_mailbox);
     muos_gamepad_start();
     g_timeout_add(16, gamepad_pulse, view);
+    if (getenv("MUOS_DIAGNOSTICS"))
+        g_timeout_add(1000, diagnostics_heartbeat, NULL);
     fprintf(stderr, "[launch] gamepad evdev iniciado (push 60Hz)\n");
 
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
@@ -392,7 +506,7 @@ int main(int argc, char *argv[]) {
     g_unix_signal_add(SIGINT,  on_term_signal, NULL);
     g_main_loop_run(loop);
     fprintf(stderr, "[launch] main loop encerrado; saindo limpo\n");
-    muos_mixer_shutdown();
+    if (audio_engine_enabled) muos_mixer_shutdown();
     muos_gamepad_stop();
     return 0;
 }

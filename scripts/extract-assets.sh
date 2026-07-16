@@ -36,11 +36,10 @@ compgen -G "$SRC_ABS/*.mp4" >/dev/null || {
 (( missing == 0 )) || exit 2
 
 mkdir -p "$DEST"
-for item in index.html c2runtime.js data.js images media; do
-  cp -a "$SRC_ABS/$item" "$DEST/"
-done
-cp -a "$SRC_ABS"/*.csv "$DEST/"
-cp -a "$SRC_ABS"/*.mp4 "$DEST/"
+# Copy the complete desktop export, not merely the minimum validation set.
+# index.html commonly references files such as jquery, manifests and icons that
+# are outside images/ and media/. Omitting them produces a subtly broken port.
+cp -a "$SRC_ABS"/. "$DEST"/
 
 printf 'Copied unchanged game export:\n  from: %s\n  to:   %s\n' "$SRC_ABS" "$DEST"
 printf 'The WPE launcher will inject moonrider/patches at document start.\n'

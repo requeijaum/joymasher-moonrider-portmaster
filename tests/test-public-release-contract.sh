@@ -21,7 +21,9 @@ require_file .github/ISSUE_TEMPLATE/config.yml
 require_file scripts/verify-public-release.sh
 require_file scripts/make-source-preview.sh
 require_file scripts/audit-runtime-release.py
+require_file scripts/scan-public-secrets.py
 require_file tests/test-source-preview-package.sh
+require_file tests/test-public-secret-scan.sh
 require_file tests/test-runtime-release-audit.sh
 require_file reports/RUNTIME-REDISTRIBUTION-AUDIT-20260715.md
 require_file docs/releases/v0.1.0-alpha.1.md
@@ -32,6 +34,9 @@ require_file docs/releases/v0.1.0-alpha.2.md
  grep -q 'WPE WebKit' THIRD_PARTY_NOTICES.md
  grep -q 'GStreamer' THIRD_PARTY_NOTICES.md
  grep -q 'miniaudio' THIRD_PARTY_NOTICES.md
+ grep -q 'runtime-fixes/libGL.so.1' THIRD_PARTY_NOTICES.md
+ grep -q 'It is.*not' THIRD_PARTY_NOTICES.md
+ grep -q 'third-party WPE runtime' THIRD_PARTY_NOTICES.md
  grep -q '23 fps' KNOWN_ISSUES.md
  grep -q '7.*13 fps' KNOWN_ISSUES.md
  grep -q '1.79 s' KNOWN_ISSUES.md
@@ -45,7 +50,7 @@ if git grep -nE '192\.168\.1\.[0-9]+|/home/[^ /]+|/media/[^ /]+' -- \
 fi
 
 # Commercial game payloads must never be tracked.
-if git ls-files | grep -Ei '\.(ogg|mp3|wav|mp4|webm|png|jpe?g|webp|asar|exe)$'; then
+if git ls-files | grep -Ei '\.(ogg|mp3|wav|flac|m4a|aac|mp4|webm|png|jpe?g|webp|asar|exe)$'; then
   echo 'copyrighted/binary game payload extension is tracked' >&2
   exit 1
 fi
@@ -56,7 +61,8 @@ if git grep -n 'moonrider-game' -- shims runtime-fixes; then
   exit 1
 fi
 
-# Runtime binaries are release artifacts, never source-tree blobs.
+# Third-party runtime binaries stay out of moonrider/runtime in source previews.
+# The project-built GLX stub is separately covered and tracked under runtime-fixes/.
 if git ls-files moonrider/runtime | grep -v '^moonrider/runtime/README.md$'; then
   echo 'runtime binary unexpectedly tracked in source tree' >&2
   exit 1

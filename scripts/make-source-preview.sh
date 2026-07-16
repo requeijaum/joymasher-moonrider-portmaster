@@ -42,7 +42,7 @@ if grep '^moonrider/runtime/' "$TREE" | grep -qv '^moonrider/runtime/README.md$'
   echo 'Refusing source preview: imported runtime binary is tracked.' >&2
   exit 1
 fi
-if grep -Ei '\.(ogg|mp3|wav|mp4|webm|asar|exe)$' "$TREE"; then
+if grep -Ei '\.(ogg|mp3|wav|flac|m4a|aac|mp4|webm|png|jpe?g|webp|asar|exe)$' "$TREE"; then
   echo 'Refusing source preview: forbidden game/binary asset extension.' >&2
   exit 1
 fi

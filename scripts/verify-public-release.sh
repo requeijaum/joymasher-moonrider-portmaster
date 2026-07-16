@@ -17,6 +17,7 @@ PYTHONPYCACHEPREFIX=/tmp/moonrider-pycache python3 -m py_compile scripts/*.py
 node --check shims/muos_audio_ghost.js
 node --check shims/muos_gamepad_shim.js
 node tests/test-audio-ghost.js
+bash tests/test-public-secret-scan.sh
 sh tests/test-public-release-contract.sh
 bash tests/test-runtime-release-audit.sh
 bash tests/test-source-preview-package.sh

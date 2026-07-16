@@ -31,8 +31,8 @@ included — bring your own copy of the game (see below).
 
 - A PortMaster-capable aarch64 handheld (tested: RG40xx H / muOS 2508.4)
 - A legitimate copy of the game's assets
-- The bundled aarch64 WPE runtime under `moonrider/runtime/` (imported
-  separately — see [`docs/CROSS-COMPILE.md`](docs/CROSS-COMPILE.md))
+- A separately assembled aarch64 WPE runtime under `moonrider/runtime/`; it is
+  **not included** in source/BYO releases (see [`docs/CROSS-COMPILE.md`](docs/CROSS-COMPILE.md))
 
 ## Reproduce a playable build
 
@@ -90,12 +90,12 @@ See [Contributing](CONTRIBUTING.md) for the asset-free build/test workflow and
 ## The port
 
 Rather than an Android WebView (see the sibling `moonrider-android` project),
-this port ships a native **WPE WebKit** runtime cross-compiled x86_64 →
+a playable deployment uses a native **WPE WebKit** runtime cross-compiled x86_64 →
 aarch64 and renders through `mali-fbdev`:
 
 - `Moonrider.sh` — launcher: sources PortMaster `control.txt`, stops the muOS
   frontend to release `/dev/fb0`, then runs the game via `runtime/run-moonrider.sh`
-- `moonrider/runtime/` — the bundled aarch64 WPE/GStreamer/ICU library set plus
+- `moonrider/runtime/` — a separately assembled aarch64 WPE/GStreamer/ICU library set plus
   our `moonrider-launch` binary and `libWPEBackend-mali-fbdev.so`
   (built via `docker/` + imported — see `docs/CROSS-COMPILE.md`)
 
@@ -121,8 +121,8 @@ system quit combo, implemented in the launcher:
 | **L2 + R1, pressed twice within 2 s** | Quit to PortMaster    |
 
 > The quit combo is a **double press** (press, release, press again inside 2 s) —
-> holding it once does not trigger. It lives in `backend/exit_combo.h` +
-> `backend/moonrider-launch.c` (`btn[6]`=L2, `btn[5]`=R1). Fill in the game's real
+> holding it once does not trigger. It lives in `native/backend/exit_combo.h` +
+> `native/backend/moonrider-launch.c` (`btn[6]`=L2, `btn[5]`=R1). Fill in the game's real
 > button→action rows here once verified on the device.
 
 ## About the assets

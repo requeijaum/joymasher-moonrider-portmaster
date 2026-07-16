@@ -12,6 +12,14 @@ No commercial game assets are included or licensed by this project. *Vengeful Gu
 
 The complete miniaudio license text is retained at the end of `native/audio-mixer/miniaudio.h`.
 
+## Project-built artifact included in source previews
+
+`runtime-fixes/libGL.so.1` is a small aarch64 no-op GLX stub built from the
+versioned original source `runtime-fixes/libgl-stub.c` by
+`scripts/build-launcher-backend.sh`. It is part of the PLAYABLE-V2 reproducibility
+contract and is covered by this project's Apache-2.0 license. It is **not** the
+third-party WPE runtime and contains no commercial game code or assets.
+
 ## Components expected in a binary runtime artifact
 
 A binary PortMaster runtime may contain the following independently licensed projects. Exact versions and files must be recorded in the release's generated component manifest before publication.

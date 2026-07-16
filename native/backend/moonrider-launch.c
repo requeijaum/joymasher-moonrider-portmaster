@@ -384,6 +384,34 @@ static gboolean add_user_script_file(WebKitUserContentManager *ucm,
     return TRUE;
 }
 
+static gboolean add_frameskip_override(WebKitUserContentManager *ucm) {
+    const char *value = getenv("MOONRIDER_FRAMESKIP");
+    if (!value || !*value) return TRUE;
+
+    char *end = NULL;
+    long frameskip = strtol(value, &end, 10);
+    if (!end || *end != '\0' || frameskip < 0 || frameskip > 3) {
+        fprintf(stderr,
+                "[launch] AVISO: MOONRIDER_FRAMESKIP invalido '%s' (use 0..3)\n",
+                value);
+        return TRUE;
+    }
+
+    gchar *source = g_strdup_printf(
+        "window.MOONRIDER_FRAMESKIP_OVERRIDE=%ld;", frameskip);
+    WebKitUserScript *script = webkit_user_script_new(
+        source,
+        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+        NULL,
+        NULL);
+    webkit_user_content_manager_add_script(ucm, script);
+    webkit_user_script_unref(script);
+    g_free(source);
+    fprintf(stderr, "[launch] frameskip fixo configurado: %ld\n", frameskip);
+    return TRUE;
+}
+
 int main(int argc, char *argv[]) {
     const char *url = (argc > 1) ? argv[1] : "file:///mnt/mmc/wpe-test/smoke.html";
     audio_engine_enabled = getenv("MOONRIDER_DISABLE_AUDIO") == NULL;
@@ -426,10 +454,14 @@ int main(int argc, char *argv[]) {
     }
     char *gamepad_shim = g_build_filename(shim_dir, "muos_gamepad_shim.js", NULL);
     char *audio_shim = g_build_filename(shim_dir, "muos_audio_ghost.js", NULL);
+    char *frameskip_shim = g_build_filename(shim_dir, "muos_frameskip.js", NULL);
     gboolean shims_ok = add_user_script_file(ucm, audio_shim) &&
-                        add_user_script_file(ucm, gamepad_shim);
+                        add_user_script_file(ucm, gamepad_shim) &&
+                        add_frameskip_override(ucm) &&
+                        add_user_script_file(ucm, frameskip_shim);
     g_free(gamepad_shim);
     g_free(audio_shim);
+    g_free(frameskip_shim);
     if (!shims_ok) return 3;
 
     /* cria a web view COM o backend e o user content manager */

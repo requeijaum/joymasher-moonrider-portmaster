@@ -21,6 +21,7 @@ cp "$ROOT/moonrider/gameinfo.xml" "$STAGE/moonrider/gameinfo.xml"
 cp "$ROOT/moonrider/ASSETS-HERE.txt" "$STAGE/moonrider/ASSETS-HERE.txt"
 cp "$ROOT/moonrider/patches/muos_gamepad_shim.js" "$STAGE/moonrider/patches/"
 cp "$ROOT/moonrider/patches/muos_audio_ghost.js" "$STAGE/moonrider/patches/"
+cp "$ROOT/moonrider/patches/muos_frameskip.js" "$STAGE/moonrider/patches/"
 cp "$ROOT/runtime-config/run-moonrider.sh" "$STAGE/moonrider/runtime/run-moonrider.sh"
 for rel in \
   bin/moonrider-launch \
@@ -37,7 +38,7 @@ for n in $(seq -w 1 22); do
   cp "$ROOT/runtime-fixes/libGL.so.1" \
     "$STAGE/moonrider/runtime/gst-plugins/libgstsynthetic$n.so"
 done
-printf '\0MOONRIDER_SHIM_DIR\0muos_gamepad_shim.js\0muos_audio_ghost.js\0' \
+printf '\0MOONRIDER_SHIM_DIR\0muos_gamepad_shim.js\0muos_audio_ghost.js\0muos_frameskip.js\0MOONRIDER_FRAMESKIP\0' \
   >> "$STAGE/moonrider/runtime/bin/moonrider-launch"
 printf 'Synthetic test-only provenance; not releasable.\n' > \
   "$STAGE/moonrider/runtime/RUNTIME-PROVENANCE.md"
@@ -60,6 +61,7 @@ if unzip -Z1 "$OUT" | grep -qx 'port.json'; then
 fi
 unzip -Z1 "$OUT" | grep -qx 'moonrider/patches/muos_gamepad_shim.js'
 unzip -Z1 "$OUT" | grep -qx 'moonrider/patches/muos_audio_ghost.js'
+unzip -Z1 "$OUT" | grep -qx 'moonrider/patches/muos_frameskip.js'
 python3 - "$OUT" <<'PY'
 import json, sys, zipfile
 with zipfile.ZipFile(sys.argv[1]) as zf:
@@ -84,6 +86,7 @@ fi
   sha256sum -c "$(basename "$OUT").sha256" >/dev/null
 )
 grep -q '  moonrider/patches/muos_audio_ghost.js$' "$OUT.manifest.sha256"
+grep -q '  moonrider/patches/muos_frameskip.js$' "$OUT.manifest.sha256"
 if grep -q '  moonrider/game/' "$OUT.manifest.sha256"; then
   echo 'game payload leaked into per-file manifest' >&2
   exit 1

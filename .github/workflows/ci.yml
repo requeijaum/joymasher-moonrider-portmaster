@@ -22,6 +22,8 @@ jobs:
       - name: Test port patches
         run: |
           node tests/test-audio-ghost.js
+          node tests/test-frameskip.js
+          node tests/test-frameskip-late-menu.js
           node tests/test-gamepad-latest-state.js
           bash tests/test-audio-command-queue.sh
           bash tests/test-audio-worker.sh

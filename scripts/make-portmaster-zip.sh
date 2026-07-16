@@ -14,6 +14,7 @@ required=(
   moonrider/ASSETS-HERE.txt
   moonrider/patches/muos_gamepad_shim.js
   moonrider/patches/muos_audio_ghost.js
+  moonrider/patches/muos_frameskip.js
   moonrider/runtime/run-moonrider.sh
   moonrider/runtime/RUNTIME-MANIFEST.sha256
   moonrider/runtime/RUNTIME-PROVENANCE.md
@@ -112,7 +113,7 @@ file "${wpe_libs[0]}" | grep -q 'ARM aarch64' || {
 }
 
 launcher="$STAGING/moonrider/runtime/bin/moonrider-launch"
-for marker in MOONRIDER_SHIM_DIR muos_gamepad_shim.js muos_audio_ghost.js; do
+for marker in MOONRIDER_SHIM_DIR muos_gamepad_shim.js muos_audio_ghost.js muos_frameskip.js MOONRIDER_FRAMESKIP; do
   grep -qa "$marker" "$launcher" || {
     echo "Launcher lacks required BYO runtime-shim support: $marker" >&2
     exit 2
@@ -204,6 +205,7 @@ for rel in \
   moonrider/ASSETS-HERE.txt \
   moonrider/patches/muos_gamepad_shim.js \
   moonrider/patches/muos_audio_ghost.js \
+  moonrider/patches/muos_frameskip.js \
   moonrider/runtime/run-moonrider.sh \
   moonrider/runtime/bin/moonrider-launch; do
   grep -qx "$rel" <<<"$LIST" || {

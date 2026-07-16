@@ -1,6 +1,6 @@
 # Fixed and Adjustable Frameskip Investigation
 
-Status: design validated in the desktop Construct 2 runtime; device validation is still required.
+Status: implemented and validated in the desktop Construct 2 runtime and on the RG40xx H.
 
 ## Goal
 
@@ -53,11 +53,11 @@ This preserves the existing cursor, left/right input, save path, layout, and men
 
 The original screen-mode actions belong to the Electron plugin. Its `Fullscreen` and `SetWindowSize` actions immediately return when `runningElectron` is false, which is the case under WPE. They therefore have no effect in the port.
 
-## Proposed implementation
+## Implemented architecture
 
-Add a port-owned `moonrider/patches/muos_frameskip.js` and inject it at document start with the existing launcher user-script mechanism.
+The port-owned `moonrider/patches/muos_frameskip.js` is injected at document start with the existing launcher user-script mechanism.
 
-The shim should:
+The shim:
 
 1. poll `cr_getC2Runtime()` until the runtime and settings Dictionaries exist;
 2. change `menuOPTIONS` from `SCREEN MODE` to `FRAME SKIP`;
@@ -77,13 +77,14 @@ Recommended cadence:
 | 2 | one draw every 3 ticks | 20 fps |
 | 3 | one draw every 4 ticks | 15 fps |
 
-A fixed mode can use the same hook with a launcher-provided override. Suggested precedence:
+The fixed diagnostic mode uses the same hook with a launcher-provided override. Precedence is:
 
 1. `MOONRIDER_FRAMESKIP` launcher override, when explicitly set;
 2. native menu value (`settings_screenmode`);
 3. default `OFF`.
 
-The fixed device experiment should start with `MOONRIDER_FRAMESKIP=1`. Once frame pacing, audio synchronization, menus, transitions, and safe quit pass on-device, enable native-menu adjustment and remove the override.
+The override is intended for diagnosis. Normal play uses the persisted native-menu
+selection; `1` is the recommended starting point on the RG40xx H.
 
 ## Important implementation details
 
@@ -97,23 +98,36 @@ Apply the hook only after loading completes. Loader and first-frame behavior sho
 
 Reset the cadence phase when the setting changes or a layout changes. This guarantees that the next tick draws immediately and prevents a stale frame during transitions.
 
-## Risks and required device tests
+## Device validation
 
-1. **Frame pacing:** verify stable 30/20/15 presentation rather than uneven bursts.
-2. **GPU savings:** compare CPU/GPU load and gameplay FPS with OFF and 1.
-3. **Audio synchronization:** test music intros/loops, SFX, pause/resume, and cutscenes.
-4. **Input latency:** compare attack, jump, parry, and menu navigation at OFF and 1.
-5. **Transitions:** test title, stage load, pause, death, checkpoint, and cutscene transitions.
-6. **Animated shaders:** verify CRT and time-based shader effects with skipped draws.
-7. **Persistence:** change the menu value, quit safely, relaunch, and verify restoration.
-8. **Safe quit:** confirm the MODE-button exit path remains unchanged.
-9. **Diagnostics:** ensure logs expose active skip, logic ticks, draws, and skipped draws.
+The adjustable menu implementation passed a physical RG40xx H smoke session. The
+player reported that the setting worked well. The preserved session ran for about
+13 minutes 48 seconds and ended through the safe-quit path without a crash.
+
+Telemetry recorded:
+
+- 828 main-loop heartbeats and at least 30,600 presented frames;
+- sections near 50–60 presentations/s with frameskip off;
+- a long section generally near 30–33 presentations/s with setting `1`;
+- return to 50–60 presentations/s near the end;
+- 55,907 processed audio commands, zero drops, queue high-water 11/128;
+- zero audio stalls and zero circuit-breaker events;
+- clean queue drain and audio-worker shutdown.
+
+The WPE log does not mirror the selected menu text, so it cannot independently prove
+every short-lived `2`/`3` selection. Automated tests cover the exact 1-in-2, 1-in-3
+and 1-in-4 cadences, setting changes, layout changes and late menu discovery.
+
+## Remaining risks
+
+1. Compare input latency and shader appearance during longer sessions at `2` and `3`.
+2. Check additional cutscenes and layout transitions for stale-frame artifacts.
+3. Keep measuring actual draws separately from Construct 2's logic-FPS counter.
+4. Revalidate audio intros and loops whenever either frameskip or Audio Ghost changes.
 
 ## Recommendation
 
-Implement the port-owned shim in two gates:
-
-1. fixed `frameskip=1`, enabled only for a physical regression run;
-2. native-menu adjustment after the fixed mode passes.
-
-This is preferable to an FPS cap because it directly removes expensive render work while retaining the game's 60 Hz simulation.
+Use native-menu setting `1` on the RG40xx H. Keep `OFF` available for comparison and
+reserve `MOONRIDER_FRAMESKIP` for fixed diagnostic runs. Do not replace render-only
+suppression with an animation-frame cap, because that would also slow simulation and
+input.

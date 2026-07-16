@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-for shim in muos_gamepad_shim.js muos_audio_ghost.js; do
+for shim in muos_gamepad_shim.js muos_audio_ghost.js muos_frameskip.js; do
   test -s "$ROOT/moonrider/patches/$shim"
 done
 
@@ -15,12 +15,16 @@ grep -q 'WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START' \
   "$ROOT/native/backend/moonrider-launch.c"
 grep -q 'muos_gamepad_shim.js' "$ROOT/native/backend/moonrider-launch.c"
 grep -q 'muos_audio_ghost.js' "$ROOT/native/backend/moonrider-launch.c"
+grep -q 'muos_frameskip.js' "$ROOT/native/backend/moonrider-launch.c"
+grep -q 'MOONRIDER_FRAMESKIP' "$ROOT/native/backend/moonrider-launch.c"
 python3 - "$ROOT/native/backend/moonrider-launch.c" <<'PY'
 import sys
 source = open(sys.argv[1], encoding='utf-8').read()
 audio = source.index('add_user_script_file(ucm, audio_shim)')
 gamepad = source.index('add_user_script_file(ucm, gamepad_shim)')
+frameskip = source.index('add_user_script_file(ucm, frameskip_shim)')
 assert audio < gamepad, 'PLAYABLE-V2 order requires Audio Ghost before gamepad'
+assert gamepad < frameskip, 'frameskip must load after compatibility shims'
 PY
 if grep -q '^export MUOS_DEBUG=1$' "$ROOT/runtime-config/run-moonrider.sh"; then
   echo 'release runtime must not force verbose JS console logging' >&2

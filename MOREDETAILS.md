@@ -41,15 +41,26 @@ available:
 
 The intro `.mp4` from the legitimate desktop export is required. Launch
 **Moonrider** from the Ports menu. Use **L2 + R1 twice within two seconds** to quit.
-The WPE launcher injects the maintained gamepad and Audio Ghost patches from
-`moonrider/patches/` at document start; do not edit `game/index.html`.
+The WPE launcher injects the maintained gamepad, Audio Ghost and render-only
+frameskip patches from `moonrider/patches/` at document start; do not edit
+`game/index.html`.
+
+The native Options menu exposes `FRAME SKIP`: `OFF`, `1`, `2`, and `3` render
+every first, second, third, or fourth logic tick. The launcher also accepts a
+fixed diagnostic override through `MOONRIDER_FRAMESKIP=0..3`; removing the
+override restores the saved menu selection.
+
+Audio Ghost V13 also schedules noncanonical boss intro/loop names as atomic native
+pairs and repairs Construct 2 `OnEnded` conditions cached before runtime injection.
+The implementation, evidence and pending physical validation plan are documented in
+[Boss music handoff fix](docs/BOSS-AUDIO-HANDOFF.md).
 
 ## Port code
 
 - `Moonrider.sh` — PortMaster/muOS launcher and frontend lifecycle
 - `native/backend/` — WPE framebuffer backend, launcher and evdev input
 - `native/audio-mixer/` — miniaudio/libvorbis mixer
-- `moonrider/patches/` — runtime-injected gamepad and Audio Ghost V12 patches
+- `moonrider/patches/` — runtime-injected gamepad, Audio Ghost V13 and frameskip patches
 - `runtime-config/` — WPE runtime environment
 - `runtime-fixes/` — EGL-forcing GLX stub
 - `scripts/extract-assets.sh` — copies a complete game export without modifying it

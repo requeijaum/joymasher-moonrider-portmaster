@@ -15,6 +15,7 @@ for f in \
   "$ROOT/native/audio-mixer/muos_audio_mixer.c" \
   "$ROOT/moonrider/patches/muos_audio_ghost.js" \
   "$ROOT/moonrider/patches/muos_gamepad_shim.js" \
+  "$ROOT/moonrider/patches/muos_frameskip.js" \
   "$ROOT/runtime-config/run-moonrider.sh"; do
   [[ -f "$f" ]] || fail "required source absent: ${f#$ROOT/}"
 done
@@ -69,6 +70,7 @@ if [[ -n "$PORT_ROOT" ]]; then
   grep -qa MOONRIDER_SHIM_DIR "$R/bin/moonrider-launch" || fail "staging launcher lacks runtime shim injection"
   [[ -f "$P/muos_audio_ghost.js" ]] || fail "staging port lacks audio ghost"
   [[ -f "$P/muos_gamepad_shim.js" ]] || fail "staging port lacks gamepad shim"
+  [[ -f "$P/muos_frameskip.js" ]] || fail "staging port lacks frameskip shim"
   grep -q 'PLAYPAIR|' "$P/muos_audio_ghost.js" || fail "staging ghost lacks PLAYPAIR"
   python3 - "$ROOT" "$PORT_ROOT" <<'PY'
 from pathlib import Path
@@ -77,7 +79,7 @@ root, port = map(Path, sys.argv[1:])
 game = port / "game"
 if game.exists() and any(path.is_file() for path in game.rglob("*")):
     raise SystemExit("FAIL: asset-free BYO staging contains commercial game files")
-for name in ("muos_audio_ghost.js", "muos_gamepad_shim.js"):
+for name in ("muos_audio_ghost.js", "muos_gamepad_shim.js", "muos_frameskip.js"):
     src = root / "moonrider/patches" / name
     packaged = port / "patches" / name
     if hashlib.sha256(src.read_bytes()).digest() != hashlib.sha256(packaged.read_bytes()).digest():

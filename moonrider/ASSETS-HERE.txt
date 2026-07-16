@@ -6,8 +6,8 @@ On the handheld, create game/ BESIDE this file:
   <active-card>/ports/moonrider/game/
 
 Copy the UNCHANGED CONTENTS of the Steam/GOG desktop Electron export there.
-The launcher injects audio/gamepad patches from ../patches/ at runtime. Do not
-edit index.html and do not copy those patches into game/.
+The launcher injects audio/gamepad/frameskip patches from ../patches/ at runtime.
+Do not edit index.html and do not copy those patches into game/.
 The result must include:
 
   game/index.html

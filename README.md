@@ -27,7 +27,7 @@ No game assets are included in this repository or in the port package.
    `game/images/`, `game/media/` and the intro MP4 are present.
 6. Launch **Moonrider** from the Ports menu.
 
-The launcher injects the required gamepad and audio compatibility layers at
+The launcher injects the required gamepad, audio and render-frameskip layers at
 runtime. Do not edit `game/index.html`.
 
 ## Controls
@@ -35,6 +35,11 @@ runtime. Do not edit `game/index.html`.
 The port exposes the handheld controls as a standard gamepad. Press
 **L2 + R1**, release, then press the same combination again within two seconds
 to quit safely.
+
+In the game's native **Options** menu, the desktop-only **Screen Mode** row is
+replaced by **Frame Skip**: `OFF` draws every tick, while `1`, `2` and `3` draw
+every second, third or fourth tick. Game logic, input and audio still update at
+full speed. Start with `1` on the RG40xx H.
 
 ## Compatibility
 
@@ -45,6 +50,7 @@ performance varies by scene and other devices are untested.
 ## More information
 
 - [Technical details, build instructions and release policy](MOREDETAILS.md)
+- [Boss music handoff investigation and physical test plan](docs/BOSS-AUDIO-HANDOFF.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Private device-validation report](reports/RELATORIO-SESSAO-20260716.md)
 

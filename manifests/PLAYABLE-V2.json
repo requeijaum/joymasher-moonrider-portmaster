@@ -8,14 +8,14 @@
     "runtime/bin/moonrider-launch": "6efca7043208277c3e756897a567c1da",
     "runtime/lib/libWPEBackend-mali-fbdev.so": "e43e27acee6960a5ac8ee2ca0011dd02",
     "runtime/libs/libGL.so.1": "1115e827437465a2221e0baf8611379e",
-    "patches/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
+    "patches/muos_audio_ghost.js": "2a12509d173e2719b28a85382afe771b",
     "patches/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b"
   },
   "canonical_sources_md5": {
     "runtime-fixes/libgl-stub.c": "b920abb2b57c3307334e869f60473727",
     "runtime-fixes/libGL.so.1": "1115e827437465a2221e0baf8611379e",
     "native/backend/backend-mali-fbdev.c": "7861dd788b3407fa5450840c7fab0022",
-    "native/backend/moonrider-launch.c": "7c5a95fd05018028758d5410f5f9734e",
+    "native/backend/moonrider-launch.c": "0573608d8b717119e6323a5b67ec2028",
     "native/backend/input_mailbox.c": "5a296810a58c4ce9be9926feab3fe6ac",
     "native/backend/input_mailbox.h": "89e42cf739f65a288e2d50524a67d534",
     "native/audio-mixer/muos_audio_mixer.c": "82886fe0280217046db9f2f485ba9281",
@@ -26,8 +26,9 @@
     "native/audio-mixer/audio_worker.h": "7cad7be11840ba305f1b8626e2b3ab5d",
     "native/audio-mixer/miniaudio_backend.c": "c5a2137aba4c97a5fd6204dac4a35a76",
     "native/audio-mixer/miniaudio_backend.h": "5c377cdbc1cb933b9ddfbe4f44f7fa0f",
-    "moonrider/patches/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
+    "moonrider/patches/muos_audio_ghost.js": "2a12509d173e2719b28a85382afe771b",
     "moonrider/patches/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b",
+    "moonrider/patches/muos_frameskip.js": "f437bcf293af43830c60b6a5708cefa8",
     "runtime-config/run-moonrider.sh": "0e3218472bda41d309ca5363faf04122"
   },
   "game_export": "desktop/Electron Construct 2 export from device known-good backup; not raw Android-derived export",

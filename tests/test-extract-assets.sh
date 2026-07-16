@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TMP=$(mktemp -d /tmp/moonrider-extract-test.XXXXXX)
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/moonrider-extract-test.XXXXXX")
 echo "preserving extraction test: $TMP"
 SRC="$TMP/source"
 DEST="$TMP/game"

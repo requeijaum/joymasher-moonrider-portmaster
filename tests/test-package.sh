@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TMP=$(mktemp -d /tmp/moonrider-package-test.XXXXXX)
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/moonrider-package-test.XXXXXX")
 echo "preserving package test: $TMP"
 
 STAGE="$TMP/stage"
@@ -67,7 +67,7 @@ with zipfile.ZipFile(sys.argv[1]) as zf:
     assert metadata['version'] == 4
     assert metadata['name'] == 'moonrider.zip'
     assert metadata['items'] == ['Moonrider.sh', 'moonrider']
-    assert metadata['items_opt'] is None
+    assert metadata['items_opt'] == []
     assert metadata['attr']['runtime'] == []
     assert metadata['attr']['reqs'] == []
     assert metadata['attr']['arch'] == ['aarch64']

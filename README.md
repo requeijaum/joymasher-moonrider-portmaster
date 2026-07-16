@@ -1,105 +1,54 @@
-# Moonrider — PortMaster
+# Vengeful Guardian: Moonrider — PortMaster
 
-Native PortMaster port of **Vengeful Guardian: Moonrider** for aarch64 handhelds.
-It runs the game's Construct 2 desktop export through WPE WebKit with a native
-framebuffer backend, evdev gamepad input and a native audio mixer.
+Unofficial, experimental PortMaster port of **Vengeful Guardian: Moonrider**.
+It runs the original desktop Construct 2 export on aarch64 handhelds through
+WPE WebKit, with native framebuffer video, gamepad input and audio.
 
-Tested on **Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE**. Current performance is
-about 23 fps, with lower frame rates and delayed input in heavy scenes.
+> **Status:** device-verified on Anbernic RG40xx H with muOS 2508.4 LOOSE
+> GOOSE. The installable runtime remains a private test build while its public
+> redistribution provenance is completed.
 
-No game assets are included. You must own the Steam or GOG version.
+## Requirements
 
-## Install
+- An aarch64 handheld supported by PortMaster.
+- A legitimate desktop copy from
+  [Steam](https://store.steampowered.com/app/1942010/Vengeful_Guardian_Moonrider/)
+  or [GOG](https://www.gog.com/en/game/vengeful_guardian_moonrider).
+- The desktop/Electron game export. Android assets are not compatible.
 
-An installable release must be named `moonrider.zip`. The current
-`v0.1.0-alpha.2` release is source-only; do not mistake it for an installable port.
-A playable ZIP will be published only when the bundled WPE runtime can be legally
-redistributed with its licenses and source provenance.
+No game assets are included in this repository or in the port package.
 
-When an installable ZIP is available:
+## Installation
 
-1. Install `moonrider.zip` through PortMaster.
-2. Open the installed `ports/moonrider/` data folder on the active card (the one
-   containing `ASSETS-HERE.txt`) and create `game/` beside that marker.
-3. Copy the **unchanged contents** of the desktop/Electron game export into `game/`.
-4. Confirm these paths exist:
+1. Install an authorized `moonrider.zip` test package through PortMaster.
+2. Open `ports/moonrider/` on the active SD card.
+3. Create `game/` beside `ASSETS-HERE.txt`.
+4. Copy the unchanged contents of the desktop game export into `game/`.
+5. Check that `game/index.html`, `game/c2runtime.js`, `game/data.js`,
+   `game/images/`, `game/media/` and the intro MP4 are present.
+6. Launch **Moonrider** from the Ports menu.
 
-```text
-<active-card>/ports/moonrider/game/index.html
-<active-card>/ports/moonrider/game/c2runtime.js
-<active-card>/ports/moonrider/game/data.js
-<active-card>/ports/moonrider/game/images/
-<active-card>/ports/moonrider/game/media/
-```
+The launcher injects the required gamepad and audio compatibility layers at
+runtime. Do not edit `game/index.html`.
 
-The intro `.mp4` from the legitimate desktop export is required. Launch
-**Moonrider** from the Ports menu. Use **L2 + R1 twice within two seconds** to quit.
-The WPE launcher injects the maintained gamepad and Audio Ghost patches from
-`moonrider/patches/` at document start; do not edit `game/index.html`.
+## Controls
 
-## Port code
+The port exposes the handheld controls as a standard gamepad. Press
+**L2 + R1**, release, then press the same combination again within two seconds
+to quit safely.
 
-- `Moonrider.sh` — PortMaster/muOS launcher and frontend lifecycle
-- `native/backend/` — WPE framebuffer backend, launcher and evdev input
-- `native/audio-mixer/` — miniaudio/libvorbis mixer
-- `moonrider/patches/` — runtime-injected gamepad and Audio Ghost V12 patches
-- `runtime-config/` — WPE runtime environment
-- `runtime-fixes/` — EGL-forcing GLX stub
-- `scripts/extract-assets.sh` — copies a complete game export without modifying it
-- `scripts/make-portmaster-zip.sh` — builds the asset-free installable ZIP
+## Compatibility
 
-## Build from an approved staging tree
+Only the **Anbernic RG40xx H / muOS 2508.4 LOOSE GOOSE** combination has been
+physically validated. Recorded test sessions ran at roughly 39–46 fps, but
+performance varies by scene and other devices are untested.
 
-The staging tree must already contain the approved aarch64 WPE runtime:
+## More information
 
-```text
-Moonrider.sh
-moonrider/port.json
-moonrider/gameinfo.xml
-moonrider/runtime/
-  RUNTIME-PROVENANCE.md
-  RUNTIME-MANIFEST.sha256
-  LICENSES/
-moonrider/patches/
-moonrider/ASSETS-HERE.txt
-```
+- [Technical details, build instructions and release policy](MOREDETAILS.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Private device-validation report](reports/RELATORIO-SESSAO-20260716.md)
 
-After the runtime tree, provenance and license payload are final, generate its
-complete inventory and build the ZIP:
-
-```bash
-python3 scripts/generate-runtime-manifest.py \
-  /path/to/staging/moonrider/runtime
-STAGING=/path/to/staging \
-MOONRIDER_OUT=/tmp/moonrider.zip \
-  scripts/make-portmaster-zip.sh
-```
-
-Host prerequisites: Bash, Python 3, `file`, `unzip` and GNU coreutils.
-The builder refuses to overwrite existing output and emits:
-
-```text
-moonrider.zip
-moonrider.zip.sha256
-moonrider.zip.manifest.sha256
-```
-
-To prepare your own game directory without modifying the originals:
-
-```bash
-MOONRIDER_GAME_DEST=/path/to/staging/moonrider/game \
-  scripts/extract-assets.sh /path/to/desktop-game-export
-```
-
-## Development history
-
-The full reports, experiments, build logs and rejected approaches are preserved in
-the [`research`](https://github.com/requeijaum/joymasher-moonrider-portmaster/tree/research)
-branch. `main` is intended to contain only the maintained port and release surface.
-
-## Legal
-
-Port code: [Apache-2.0](LICENSE). Third-party components retain their own licenses;
-see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Game code, assets, artwork,
-audio, video and trademarks belong to JoyMasher, The Arcade Crew, Asteristic Game
-Studio and their respective owners. This is an unofficial project.
+Port by [requeijaum](https://github.com/requeijaum). Vengeful Guardian:
+Moonrider and its assets belong to JoyMasher, The Arcade Crew, Asteristic Game
+Studio and their respective owners. This project is unofficial.

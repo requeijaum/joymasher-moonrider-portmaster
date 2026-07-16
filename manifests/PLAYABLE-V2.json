@@ -8,8 +8,8 @@
     "runtime/bin/moonrider-launch": "6efca7043208277c3e756897a567c1da",
     "runtime/lib/libWPEBackend-mali-fbdev.so": "e43e27acee6960a5ac8ee2ca0011dd02",
     "runtime/libs/libGL.so.1": "1115e827437465a2221e0baf8611379e",
-    "game/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
-    "game/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b"
+    "patches/muos_audio_ghost.js": "256275a1c43edf00dd9403bbad5b0604",
+    "patches/muos_gamepad_shim.js": "0b04a48b2b11db9a25099f9af988388b"
   },
   "canonical_sources_md5": {
     "runtime-fixes/libgl-stub.c": "b920abb2b57c3307334e869f60473727",

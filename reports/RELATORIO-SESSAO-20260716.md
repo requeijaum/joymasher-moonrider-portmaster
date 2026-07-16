@@ -6,7 +6,7 @@ Classificação: candidato PortMaster BYO privado; runtime ainda não autorizado
 
 ## Resultado
 
-O travamento permanente provocado pelo mixer nativo não ocorreu após a substituição do acesso direto ao miniaudio por um worker single-owner. O teste físico que anteriormente reproduzia o crash foi repetido com áudio nativo ativo e passou. O usuário continuou jogando e iniciou a geração da primeira fase.
+O travamento permanente provocado pelo mixer nativo não ocorreu após a substituição do acesso direto ao miniaudio por um worker single-owner. O teste físico que anteriormente reproduzia o crash foi repetido com áudio nativo ativo e passou. Uma segunda sessão continuou estável e terminou por safe quit, com encerramento limpo do main loop.
 
 ## Evidência anterior
 
@@ -82,6 +82,6 @@ A revisão delegada independente não foi executada porque o provider configurad
 
 ## Release PortMaster
 
-O runtime recuperado do handheld contém `RUNTIME-PROVENANCE.md` e `PRIVATE-TEST-NOTICE.txt` declarando explicitamente que ele não está aprovado para redistribuição. O ZIP congelado nesta sessão deve ser tratado como backup privado/BYO para o proprietário do aparelho. Publicação no GitHub ou catálogo PortMaster permanece bloqueada até reconstrução de versões, fontes correspondentes, patches, build flags, codecs e licenças de todos os componentes do runtime.
+O runtime recuperado do handheld contém `RUNTIME-PROVENANCE.md` e `PRIVATE-TEST-NOTICE.txt` declarando explicitamente que ele não está aprovado para redistribuição pública. O ZIP congelado nesta sessão deve ser tratado como backup privado/BYO para o proprietário do aparelho. Publicação em repositório público do GitHub ou no catálogo PortMaster permanece bloqueada até reconstrução de versões, fontes correspondentes, patches, build flags, codecs e licenças de todos os componentes do runtime.
 
 O arquivo comercial do jogo não integra o ZIP. O usuário continua responsável por copiar sua exportação desktop legítima para `moonrider/game/`.

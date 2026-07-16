@@ -3,7 +3,11 @@
 
 const path = require("path");
 global.window = global;
-global.navigator = {};
+Object.defineProperty(globalThis, "navigator", {
+  value: {},
+  configurable: true,
+  writable: true
+});
 global.Event = function Event(type) { this.type = type; };
 global.dispatchEvent = function () {};
 global.__muos_debug = false;
